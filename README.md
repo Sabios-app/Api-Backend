@@ -1,395 +1,238 @@
 # Sábios App - Backend
 
-Backend do Sábios App desenvolvido em **Spring Boot**, responsável pela API compartilhada pelas aplicações web e mobile, pela autenticação e autorização, pelas regras de negócio e pela persistência dos dados no **PostgreSQL**.
+Backend do projeto acadêmico **Sábios App**, desenvolvido em **Spring Boot** com banco de dados **PostgreSQL**.
 
-Este documento define o contrato técnico inicial da equipe. As decisões aqui registradas devem ser seguidas por todos os membros do backend.
+O backend é responsável pela API utilizada pelas versões Web e Mobile, pelos dados persistidos e pelas regras principais do sistema.
 
-## Índice
-
-- [Visão geral](#visão-geral)
-- [Funcionalidades cobertas pelo sistema](#funcionalidades-cobertas-pelo-sistema)
-- [Stack recomendada](#stack-recomendada)
-- [Arquitetura](#arquitetura)
-- [Estrutura obrigatória](#estrutura-obrigatória)
-- [Regras de desenvolvimento](#regras-de-desenvolvimento)
-- [API REST](#api-rest)
-- [Autenticação e autorização](#autenticação-e-autorização)
-- [PostgreSQL e persistência](#postgresql-e-persistência)
-- [Validação e tratamento de erros](#validação-e-tratamento-de-erros)
-- [Testes](#testes)
-- [Logs, observabilidade e segurança](#logs-observabilidade-e-segurança)
-- [Ambientes e configuração](#ambientes-e-configuração)
-- [Integração com Web e Mobile](#integração-com-web-e-mobile)
-- [Colaboração com 6 pessoas](#colaboração-com-6-pessoas)
-- [Fluxo Git e Pull Requests](#fluxo-git-e-pull-requests)
-- [Comandos iniciais](#comandos-iniciais)
-- [Definição de pronto](#definição-de-pronto)
+Este README apresenta uma proposta organizada de desenvolvimento para o time de seis pessoas, sem exigir práticas complexas desde o início do projeto.
 
 ---
 
-## Visão geral
+## Tecnologias
 
-O backend deve ser uma API única, estável e segura, consumida pelo frontend web e pelo aplicativo mobile. Os dois clientes devem receber os mesmos dados e obedecer às mesmas regras. A interface nunca deve conter a única validação de uma ação.
-
-Principais responsabilidades:
-
-- autenticação, cadastro e recuperação de senha;
-- gerenciamento de perfis de cliente e conselheiro;
-- busca e apresentação de especialistas;
-- agenda, disponibilidade e solicitações de mentoria;
-- planos de ação e tarefas;
-- mensagens e conversas;
-- avaliações e histórico de mentorias;
-- configurações, comunicação e preferências;
-- notificações e estados operacionais da aplicação.
-
-## Funcionalidades cobertas pelo sistema
-
-O backend deve implementar os seguintes domínios, mantendo consistência entre web e mobile:
-
-| Domínio | Funcionalidades |
-|---|---|
-| Conta e identidade | cadastro, login, logout, redefinição de senha, perfil e papel |
-| Especialistas | busca, filtros, ordenação, detalhes e avaliações |
-| Cliente | visão geral, próximos atendimentos, histórico e plano de ação |
-| Conselheiro | métricas, agenda, sessões, solicitações e avaliações |
-| Agenda | disponibilidade, agendamento, cancelamento e reagendamento |
-| Mentorias | solicitação, aceite, recusa, execução e conclusão |
-| Plano de ação | tarefas, progresso e histórico |
-| Mensagens | conversas, histórico, envio e marcação de leitura |
-| Configurações | dados da conta, comunicação e acessibilidade |
-| Notificações | contadores e avisos pendentes |
-
-Qualquer campo exibido pelo frontend deve vir de uma API ou seguir uma constante definida pela API. Dados mockados não podem ser tratados como contrato definitivo.
-
-## Stack recomendada
-
-- Java 21 LTS;
-- Spring Boot 3;
+- Java 21;
+- Spring Boot;
 - Spring Web;
 - Spring Validation;
 - Spring Security;
 - Spring Data JPA;
 - PostgreSQL;
-- Flyway para migrações de banco;
-- Lombok somente quando realmente necessário;
-- MapStruct ou mappers explícitos para DTO/entity;
-- Springdoc OpenAPI para documentação da API;
-- JUnit 5, Mockito e Testcontainers;
-- Maven ou Gradle, escolhido uma única vez para todo o projeto;
-- Docker e Docker Compose para ambiente local.
+- Flyway;
+- Maven ou Gradle;
+- JUnit 5 e Mockito;
+- Docker para facilitar o ambiente local.
 
-Não utilizar um framework ou biblioteca adicional sem justificativa técnica registrada em Pull Request.
+O time deve escolher **Maven ou Gradle** antes do início da implementação e utilizar apenas essa ferramenta em todo o projeto.
 
-## Arquitetura
+---
 
-Adotar arquitetura em camadas dentro de módulos por domínio:
+## Funcionalidades
+
+As principais áreas que o backend deverá atender são:
+
+- Cadastro, login e recuperação de senha;
+- Perfis de cliente e conselheiro;
+- Cadastro e busca de especialistas;
+- Agenda e disponibilidade;
+- Solicitações e mentorias;
+- Planos de ação e tarefas;
+- Mensagens entre usuários;
+- Avaliações;
+- Configurações da conta;
+- Notificações.
+
+As telas Web e Mobile devem consumir a mesma API. Regras importantes, como permissões e validações, devem ser implementadas no backend e não dependem da interface.
+
+---
+
+## Arquitetura sugerida
+
+O projeto deve ser organizado por responsabilidade. Uma estrutura simples e recomendada é:
 
 ```text
 src/main/java/com/sabios/
 ├── config/
 ├── shared/
-├── identity/
+├── auth/
+├── users/
 ├── specialists/
 ├── agenda/
-├── mentorship/
+├── mentoring/
 ├── actionplan/
-├── messaging/
-├── review/
-└── notification/
+├── messages/
+└── reviews/
 ```
 
-Cada domínio deve separar, sempre que necessário:
+Cada módulo pode conter:
 
 ```text
-domain/
-application/
-infra/
-api/
-```
-
-Responsabilidade das camadas:
-
-- `api`: controllers, DTOs de entrada/saída e mapeamento HTTP;
-- `application`: casos de uso, serviços e regras orquestradas;
-- `domain`: entidades, agregados, objetos de valor e regras internas;
-- `infra`: repositórios JPA, integrações externas, bancos e serviços técnicos.
-
-### Fluxo obrigatório
-
-```text
-Controller -> use case/service -> domain/repository -> database
-```
-
-Regras:
-
-- controllers não acessam entidades JPA diretamente;
-- repositórios não implementam lógica de apresentação;
-- entidades não retornam diretamente pela API;
-- regras de negócio não ficam em controllers;
-- dependências apontam para dentro da aplicação, não para o framework;
-- código deve poder ser testado sem iniciar o servidor HTTP.
-
-## Estrutura obrigatória
-
-Exemplo para um módulo de mentorias:
-
-```text
-mentorship/
-├── api/
-│   ├── MentorshipController.java
-│   ├── MentorshipRequest.java
-│   └── MentorshipResponse.java
-├── application/
-│   ├── MentorshipService.java
-│   └── dto/
+module/
+├── controller/
+├── dto/
+├── service/
 ├── domain/
-│   ├── Mentorship.java
-│   ├── MentorshipStatus.java
-│   └── MentorshipRepository.java
-└── infra/
-    ├── MentorshipEntity.java
-    ├── MentorshipJpaRepository.java
-    └── MentorshipRepositoryImpl.java
+└── repository/
 ```
 
-### Convenções de nome
+Responsabilidades básicas:
+
+- **controller**: recebe e responde requisições HTTP;
+- **dto**: representa os dados enviados ou recebidos pela API;
+- **service**: contém regras de negócio e coordena o funcionamento;
+- **domain**: representa as entidades principais do sistema;
+- **repository**: acessa os dados no PostgreSQL;
+- **config**: contém configurações da aplicação.
+
+Fluxo esperado:
+
+```text
+Controller -> Service -> Repository -> Banco de dados
+```
+
+Também é correto reutilizar entidades JPA apenas internamente. A resposta da API deve preferencialmente usar DTOs.
+
+---
+
+## Organização das classes
+
+Nomes recomendados:
 
 - classes em `PascalCase`;
-- métodos e variáveis em `camelCase`;
+- métodos e atributos em `camelCase`;
 - constantes em `UPPER_Snake_Case`;
-- pacotes em inglês e em letras minúsculas;
-- controllers terminam com `Controller`;
-- casos de uso terminam com `UseCase` ou `Service`;
-- repositórios terminam com `Repository`;
-- DTOs possuem nomes claros: `CreateUserRequest`, `UserResponse`, `UpdateProfileRequest`;
-- nomes devem expressar comportamento, não o tipo técnico.
+- pacotes em letras minúsculas;
+- nomes em português ou inglês, sem misturar dentro do mesmo módulo.
 
-Evitar classes genéricas como `Manager`, `Helper`, `Utils`, `Common` e serviços gigantes.
-
-## Regras de desenvolvimento
-
-### Arquitetura e qualidade
-
-- aplicar responsabilidade única;
-- preferir composição e interfaces simples;
-- não reutilizar entidades JPA como DTO;
-- não criar métodos públicos sem necessidade;
-- não ocultar exceções;
-- não capturar `Exception` ou `Throwable` de forma genérica;
-- não usar `System.out.println`;
-- não fazer chamadas externas dentro de transações longas;
-- não usar consultas SQL desnecessariamente complexas no controller ou service;
-- evitar anotações que façam a classe acumular regras de apresentação, negócio e infraestrutura.
-
-### Código legível
-
-- métodos pequenos e com uma responsabilidade;
-- nomes explícitos em português ou inglês: não misturar idiomas no mesmo módulo;
-- no máximo uma abstração diferente por mesmo problema;
-- comentários apenas para decisões não óbvias;
-- documentação de API gerada pelo Springdoc;
-- códigos de status sem magic numbers;
-- exclusão lógica preferida quando o registro tiver histórico ou vínculo externo;
-- exclusão física somente quando não houver dependência nem requisito de auditoria.
-
-### Transações
-
-- `@Transactional` deve ficar no caso de uso ou serviço de aplicação;
-- operações de leitura devem usar `@Transactional(readOnly = true)`;
-- não usar transações em métodos que apenas retornam dados serializáveis;
-- toda operação que altera dados deve definir claramente onde começa e termina a transação;
-- não manter transações abertas durante chamadas HTTP externas, filas ou aguardamento de entrada humana.
-
-### Paginação e ordenação
-
-Todas as listas externas devem ser paginadas:
+Exemplos:
 
 ```text
-GET /api/v1/specialists?page=0&size=20&sort=displayName,asc
+MentoringController
+MentoringService
+CreateMentoringRequest
+MentoringResponse
+MentoringRepository
 ```
 
-- limite máximo configurável para `size`;
-- ordenação padrão documentada;
-- respostas contendo `content`, `page`, `size`, `totalElements` e `totalPages`;
-- nunca retornar uma coleção inteira sem necessidade.
+Evite classes muito grandes e métodos sem nomes claros. Quando uma classe tiver muitas responsabilidades, separe o código em classes menores.
 
-### Datas e fusos
-
-- persistir datas instantâneas em UTC;
-- usar `Instant` ou `OffsetDateTime` para eventos;
-- usar `LocalDate` e `LocalTime` somente para conceitos locais, como disponibilidade;
-- nunca enviar datas sem indicar o formato ou o fuso;
-- representar horários da agenda de forma inequívoca no contrato da API;
-- calcular diferenças considerando o fuso do usuário.
+---
 
 ## API REST
 
-### Padrão de rotas
+### Endpoints
 
-Usar versionamento por URL:
+Use o padrão REST e o prefixo `/api/v1`:
 
 ```text
-/api/v1/users
 /api/v1/auth
+/api/v1/users
 /api/v1/specialists
+/api/v1/agenda
 /api/v1/mentorings
-/api/v1/messages
 /api/v1/action-plans
+/api/v1/messages
 /api/v1/reviews
 /api/v1/notifications
 ```
 
-Evitar ações em verbos:
+Exemplos:
 
 ```text
-POST /api/v1/mentorings/{id}/accept
+GET    /api/v1/specialists
+GET    /api/v1/specialists/{id}
+POST   /api/v1/mentorings
+PATCH  /api/v1/mentorings/{id}/accept
+GET    /api/v1/users/me
 ```
 
-É aceitável quando a operação representa uma ação de domínio, mas o estado deve ser validado no backend.
+### Métodos HTTP
+
+| Operação | Método |
+|---|---|
+| Buscar dados | `GET` |
+| Criar um recurso | `POST` |
+| Alterar tudo | `PUT` |
+| Alterar parte | `PATCH` |
+| Remover | `DELETE` |
 
 ### Códigos HTTP
 
-| Situação | Status |
+| Situação | Código |
 |---|---|
-| Recurso criado | `201 Created` com `Location` |
-| Busca/lista concluída | `200 OK` |
-| Atualização concluída | `200 OK` |
-| Remoção concluída | `204 No Content` |
+| Requisição concluída | `200 OK` |
+| Recurso criado | `201 Created` |
+| Recurso removido | `204 No Content` |
+| Dados inválidos | `400 Bad Request` |
+| Usuário não autenticado | `401 Unauthorized` |
+| Usuário sem permissão | `403 Forbidden` |
 | Recurso não encontrado | `404 Not Found` |
-| Entrada inválida | `400 Bad Request` |
-| Não autenticado | `401 Unauthorized` |
-| Sem autorização | `403 Forbidden` |
-| Conflito de estado ou recurso duplicado | `409 Conflict` |
-| Limite excedido | `429 Too Many Requests` |
+| Conflito ou duplicidade | `409 Conflict` |
 
-### Contrato de resposta
+---
 
-Erro padrão:
+## Contrato das respostas
+
+As respostas devem usar JSON em `camelCase`.
+
+Exemplo de sucesso:
 
 ```json
 {
-  "timestamp": "2026-01-10T12:00:00Z",
-  "status": 400,
-  "code": "VALIDATION_ERROR",
-  "message": "Os dados enviados são inválidos.",
-  "path": "/api/v1/users",
-  "errors": [
-    {
-      "field": "email",
-      "message": "Informe um email válido."
-    }
-  ],
-  "traceId": "identificador-correlacionado"
+  "id": "b7e2a7ec-1a22-4ee7-8f5a-9189b218df11",
+  "name": "Maria Silva",
+  "role": "CLIENT"
 }
 ```
 
-Não expor stack trace, SQL, nome de arquivo, segredo ou detalhes internos em respostas HTTP.
+Exemplo de erro:
 
-### Idempotência
+```json
+{
+  "status": 400,
+  "code": "VALIDATION_ERROR",
+  "message": "Os dados enviados são inválidos.",
+  "errors": [
+    {
+      "field": "email",
+      "message": "Informe um e-mail válido."
+    }
+  ]
+}
+```
 
-Operações de criação sensíveis devem validar duplicidade, especialmente:
+Sempre retorne uma mensagem compreensível. Não retorne SQL, stack trace ou informações internas da aplicação.
 
-- cadastro;
-- solicitação de mentoria;
-- envio de mensagem;
-- avaliação;
-- pagamento, caso seja implementado;
-- operações de webhook.
-
-Para ações críticas, usar chave de idempotência ou chave única no banco. Não permitir que a mesma solicitação gere dois registros ao repetir o request.
+---
 
 ## Autenticação e autorização
 
+Recomendações iniciais:
+
 - usar Spring Security;
-- usar JWT acessível pelo cliente ou OAuth 2/OIDC, caso um provedor seja adotado;
-- senhas com BCrypt ou Argon2;
-- senhas nunca retornadas por endpoints;
-- todos os endpoints privados devem exigir autenticação;
-- `cliente` e `conselheiro` são papéis diferentes;
-- autorização deve ser aplicada no backend, não apenas no frontend;
-- proprietário do recurso deve ser validado no caso de uso;
-- tokens devem ter expiração curta;
-- refresh token deve ser protegido, rotacionado e revogado no logout;
-- recuperação de senha deve usar token temporário de uso único;
-- bloquear ou limitar tentativas de autenticação;
-- configurar CORS apenas para origens reais de web e mobile.
+- proteger endpoints privados;
+- usar senha criptografada com BCrypt;
+- não salvar ou retornar a senha em texto puro;
+- usar JWT ou OAuth/OIDC, caso o time decida implementar OAuth;
+- definir a duração do token;
+- validar o perfil do usuário no backend;
+- impedir acesso de um perfil às áreas privadas de outro perfil.
 
 Exemplos de regras:
 
-- cliente não pode visualizar agenda privada de outro cliente;
-- conselheiro não pode alterar sessão de outro conselheiro;
-- somente participantes podem enviar ou ler mensagens da conversa;
+- cliente não pode visualizar a agenda privada de outro cliente;
+- conselheiro não pode alterar uma sessão de outro conselheiro;
+- somente participantes podem enviar e ler mensagens de uma conversa;
 - somente cliente pode solicitar uma mentoria;
-- somente conselheiro pode aceitar ou recusar sua solicitação;
-- somente participantes confirmados podem avaliar uma mentoria concluída.
+- somente o conselheiro indicado pode aceitar ou recusar uma solicitação;
+- uma avaliação só deve ser criada após uma mentoria concluída.
 
-Os papéis não devem ser enviados pelo cliente como prova de autorização. Eles devem ser derivados da sessão autenticada.
+O frontend pode esconder botões ou bloquear telas, mas o backend deve fazer a validação real.
 
-## PostgreSQL e persistência
+---
 
-### Modelagem
+## Validação
 
-- nomes de tabelas e colunas em inglês, por padrão;
-- usar `snake_case`;
-- identificar entidades com `UUID` ou `BIGSERIAL`, de forma consistente;
-- definir `PRIMARY KEY`, `FOREIGN KEY`, `UNIQUE`, `NOT NULL` e índices;
-- não usar cascata para dados financeiros, auditoria ou históricos;
-- evitar JSONB salvo como substituto de um modelo relacional sem justificativa;
-- todo relacionamento com cardinalidade importante deve estar representado no banco;
-- usar auditoria com `createdAt`, `createdBy`, `updatedAt` e `updatedBy` quando necessário;
-- soft delete não deve impedir integridade referencial.
-
-### JPA
-
-- usar `@EntityGraph` ou `fetch join` quando evitar N+1;
-- evitar `FetchType.EAGER`;
-- preferir relacionamentos simples e bem definidos;
-- usar consultas nomeadas ou derivadas curtas;
-- usar JPQL ou QueryDSL para consultas complexas;
-- toda query administrativa ou analítica deve ser indexada e testada com volume representativo;
-- usar transações para operações concorrentes;
-- não usar `saveAndFlush` fora de um cenário necessário.
-
-### Migrações
-
-- toda alteração de banco deve usar Flyway;
-- arquivos em `src/main/resources/db/migration`;
-- nomes sequenciais e únicos, por exemplo:
-
-```text
-V1__create_identity_tables.sql
-V2__create_specialist_tables.sql
-V3__create_mentoring_tables.sql
-```
-
-- nunca alterar uma migração já aplicada em ambiente compartilhado;
-- criar uma nova migração para corrigir a anterior;
-- testar migrações em banco vazio e em banco já populado;
-- dados de seed devem ser separados por ambiente e não alterar produção.
-
-### Concorrência
-
-- evitar perda de atualização em agenda e solicitações;
-- usar `@Version` em entidades que podem ser editadas em paralelo;
-- converter conflitos de concorrência em `409 Conflict`;
-- impedir dois atendimentos no mesmo horário, conforme a regra do produto;
-- utilizar restrições no banco para conflitos quando possível.
-
-## Validação e tratamento de erros
-
-- validar entrada com Bean Validation;
-- retornar todos os erros relevantes em uma única resposta;
-- separar erros de validação, recurso inexistente, conflito e integração externa;
-- usar exceções específicas no domínio;
-- mapear exceções em `@RestControllerAdvice`;
-- não usar `Optional.get()` sem garantia de presença;
-- não confiar em IDs enviados pelo cliente sem confirmar propriedade;
-- não permitir dados com espaços vazios ou campos fora do contrato;
-- validar tamanho máximo de texto, lista, arquivo e upload;
-- não sanitizar dados antes da validação sem explicar o efeito no valor original.
-
-Exemplos Bean Validation:
+Utilize Bean Validation nos DTOs de entrada:
 
 ```java
 @NotBlank
@@ -398,231 +241,329 @@ Exemplos Bean Validation:
 private String email;
 ```
 
+Validações importantes:
+
+- campos obrigatórios;
+- formato de e-mail;
+- tamanho mínimo e máximo;
+- datas válidas;
+- perfil autorizado;
+- existência dos recursos informados;
+- duplicidade de cadastro ou solicitação;
+- conflito de horários na agenda.
+
+Use `@RestControllerAdvice` para centralizar o tratamento de erros e manter todas as respostas consistentes.
+
+---
+
+## PostgreSQL e banco de dados
+
+### Boas práticas
+
+- usar nomes de tabelas e colunas em `snake_case`;
+- definir chave primária em todas as tabelas;
+- criar chaves estrangeiras;
+- impedir campos obrigatórios como nulos;
+- criar índices em campos usados em filtros e consultas frequentes;
+- não salvar arquivos ou imagens diretamente em tabelas;
+- registrar `created_at` e `updated_at` quando forem necessários.
+
+Exemplos de entidades iniciais:
+
+```text
+users
+specialists
+availabilities
+mentorings
+action_plans
+tasks
+conversations
+messages
+reviews
+notifications
+```
+
+A modelagem final deve seguir os requisitos e evitar tabelas desnecessárias.
+
+### Flyway
+
+Todas as alterações do banco devem ser feitas por migrações Flyway.
+
+```text
+src/main/resources/db/migration/
+├── V1__create_users.sql
+├── V2__create_specialists.sql
+├── V3__create_mentorings.sql
+└── V4__create_messages.sql
+```
+
+Regras:
+
+- não alterar uma migração já executada;
+- criar uma nova migração para correções;
+- testar migrações antes de enviar o Pull Request;
+- não adicionar dados reais ou credenciais em scripts.
+
+### JPA
+
+- não usar `FetchType.EAGER`;
+- observar consultas que podem causar problema N+1;
+- usar transações apenas onde são necessárias;
+- evitar retornar entidades diretamente pelos controllers;
+- usar UUID ou uma estratégia de ID definida pelo time.
+
+---
+
+## Paginação
+
+Listas grandes devem ser paginadas.
+
+```text
+GET /api/v1/specialists?page=0&size=20&sort=name,asc
+```
+
+Defina um tamanho máximo para evitar consultas excessivas.
+
+Exemplo de resposta:
+
+```json
+{
+  "content": [],
+  "page": 0,
+  "size": 20,
+  "totalElements": 0,
+  "totalPages": 0
+}
+```
+
+---
+
+## Datas e horários
+
+- utilizar padrão ISO-8601;
+- usar `Instant` ou `OffsetDateTime` para eventos;
+- usar `LocalDate` para datas sem horário;
+- guardar horários da agenda de forma que não gere ambiguidades;
+- considerar o fuso horário dos usuários.
+
+Exemplo:
+
+```text
+2026-11-18T14:30:00-03:00
+```
+
+---
+
+## Integração Web e Mobile
+
+Web e Mobile devem consumir o mesmo backend e seguir os mesmos contratos.
+
+### Regras comuns
+
+- usar JSON;
+- usar propriedades em `camelCase`;
+- usar datas no padrão ISO-8601;
+- utilizar os mesmos códigos HTTP;
+- utilizar os mesmos códigos de erro;
+- utilizar paginação no mesmo formato;
+- usar `/api/v1` no endereço das APIs;
+- enviar o token no header `Authorization: Bearer <token>`;
+- configurar CORS para os endereços oficiais do Web;
+- implementar mudanças incompatíveis em uma nova versão da API.
+
+O backend deve fornecer estados necessários às interfaces:
+
+- sucesso;
+- carregamento;
+- lista vazia;
+- erro;
+- não autenticado;
+- sem permissão;
+- sessão expirada;
+- recurso indisponível.
+
+Qualquer mudança em endpoint ou DTO deve ser comunicada aos responsáveis pelo Web e pelo Mobile antes do merge.
+
+---
+
 ## Testes
 
-### Pirâmide de testes
+Priorize inicialmente testes para as regras mais importantes.
 
-- testes unitários para regras de domínio;
-- testes de integração para JPA, Flyway e PostgreSQL;
-- testes de serviço/caso de uso com mocks limitados;
-- testes de controller com `@WebMvcTest` ou MockMvc;
-- testes de contrato para integrações externas;
-- cenários de ponta a ponta apenas para fluxos críticos.
-
-Ferramenta recomendada:
+Usar:
 
 - JUnit 5;
 - Mockito;
-- AssertJ;
-- Testcontainers com PostgreSQL;
-- MockMvc;
-- WireMock ou cliente HTTP mockado para integrações externas.
+- Testcontainers para PostgreSQL;
+- MockMvc para testes de controllers.
 
-### Cenários obrigatórios
+Cenários básicos:
 
-Cada funcionalidade deve testar:
+- cadastro realizado;
+- dados inválidos;
+- usuário não autenticado;
+- usuário sem permissão;
+- recurso não encontrado;
+- conflito de horário;
+- duplicidade de solicitação;
+- acesso permitido ao proprietário dos dados.
 
-- sucesso;
-- entrada inválida;
-- não autenticado;
-- sem autorização;
-- recurso inexistente;
-- conflito;
-- repetição da operação;
-- transação concorrente quando aplicável;
-- limites e paginação.
-
-Métodos de teste devem ter nomes que expressem o cenário:
+Exemplo de nome de teste:
 
 ```text
 shouldRejectMentoringRequestWhenUserIsNotClient
-shouldNotDoubleBookCounselorAtTheSameTime
+shouldNotAllowDoubleBookingAtTheSameTime
 shouldReturnNotFoundWhenConversationDoesNotExist
 ```
 
-Não testar implementação privada. Testar regras, resultado e contratos.
+Os testes podem começar menores e evoluir conforme o projeto avança.
 
-## Logs, observabilidade e segurança
+---
 
-- usar SLF4J;
-- incluir `traceId` ou `correlationId` em logs;
-- registrar eventos importantes de login, alteração de senha e mudança de estado;
-- não registrar senha, token, documento, cartão ou payload completo sensível;
-- mascarar dados pessoais em logs;
-- configurar níveis por ambiente;
-- usar métricas de aplicação com Micrometer;
-- monitorar latência, taxa de erro e uso de recursos;
-- health checks separados para aplicação e dependências;
-- não deixar endpoint de atuadores administrativos público;
-- aplicar rate limit em login, recuperação de senha e mensagens;
-- validar arquivos por tipo, tamanho e conteúdo;
-- armazenar arquivos em serviço externo ou diretório configurado, nunca no banco;
-- manter dependências atualizadas e executar análise de vulnerabilidades.
+## Segurança e logs
 
-## Ambientes e configuração
+- não registrar senha ou token nos logs;
+- não retornar detalhes internos em respostas HTTP;
+- validar tamanho e tipo de arquivos enviados;
+- aplicar limite de tentativas no login;
+- configurar variáveis sensíveis por ambiente;
+- não enviar credenciais para o Git;
+- manter dependências atualizadas;
+- permitir acesso aos endpoints administrativos apenas em ambientes controlados.
 
-Ambientes mínimos:
-
-- `local`;
-- `test`;
-- `staging`;
-- `production`.
-
-- usar variáveis de ambiente para secrets;
-- não adicionar `.env` ou credenciais ao repositório;
-- usar Spring Profiles;
-- manter `.env.example` ou um modelo seguro de configuração;
-- não usar credenciais reais em testes;
-- separar banco, chaves e logs por ambiente;
-- produção deve ter configuração de memória, pool de conexões e timeouts.
-
-Exemplo de variáveis:
+Exemplo de variáveis de ambiente:
 
 ```text
 SPRING_PROFILES_ACTIVE=local
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/sabios
 SPRING_DATASOURCE_USERNAME=sabios
-SPRING_DATASOURCE_PASSWORD=<secret>
-JWT_SECRET=<secret>
-CORS_ALLOWED_ORIGINS=http://localhost:5173
+SPRING_DATASOURCE_PASSWORD=<senha>
+JWT_SECRET=<chave-secreta>
 ```
 
-## Integração com Web e Mobile
+---
 
-Web e mobile devem consumir exatamente a mesma API. Nenhuma regra crítica pode existir apenas em um dos clientes.
+## Ambientes
 
-Contrato mínimo:
+Ambientes sugeridos:
 
-- JSON como formato padrão;
-- UTF-8;
-- camelCase em propriedades JSON;
-- ISO-8601 para datas;
-- paginação padronizada;
-- estados de API padronizados;
-- códigos de erro estáveis;
-- política de CORS configurada no backend;
-- suporte a internacionalização na resposta, quando necessário;
-- versionamento da API para mudanças incompatíveis.
+- `local`: desenvolvimento da equipe;
+- `test`: testes automatizados;
+- `staging`: apresentação ou homologação;
+- `production`: aplicação publicada.
 
-Estados que o frontend deve receber ou representar:
+Não use senhas reais em testes ou arquivos versionados. Um arquivo `.env.example` pode servir como modelo sem valores secretos.
 
-- carregando;
-- vazio;
-- sucesso;
-- erro;
-- não autorizado;
-- recurso indisponível;
-- sessão expirada.
+---
 
-Mudanças incompatíveis em endpoints exigem uma nova versão ou migração coordenada com Web e Mobile.
+## Organização do time
 
-## Colaboração com 6 pessoas
+O time de seis pessoas pode dividir os módulos da seguinte forma:
 
-Como o time possui seis pessoas, os trabalhos devem ser divididos por domínio para reduzir conflitos:
-
-| Área sugerida | Responsável primário |
+| Responsabilidade | Desenvolvedor |
 |---|---|
-| Identidade e segurança | 1 pessoa |
-| Especialistas e perfis | 1 pessoa |
-| Agenda e mentorias | 1 pessoa |
-| Plano de ação e avaliações | 1 pessoa |
-| Mensagens e notificações | 1 pessoa |
-| Integrações, infraestrutura e qualidade | 1 pessoa |
+| Login, cadastro e segurança | Pessoa 1 |
+| Usuários e especialistas | Pessoa 2 |
+| Agenda e mentorias | Pessoa 3 |
+| Planos de ação e avaliações | Pessoa 4 |
+| Mensagens e notificações | Pessoa 5 |
+| Testes, Docker e integração | Pessoa 6 |
 
-As áreas são referências de ownership, não silos: todos devem revisar código de outros módulos e compartilhar conhecimento.
+A divisão ajuda na organização, mas não impede revisões cruzadas. Todos devem participar da validação dos principais contratos da API.
 
-Boas práticas do time:
+---
 
-- um PR deve resolver uma única tarefa;
-- não iniciar duas implementações concorrentes no mesmo domínio sem coordenação;
-- abrir a tarefa com contrato de API antes da implementação;
-- manter a documentação OpenAPI atualizada;
-- atualizar o README ou os ADRs quando uma decisão técnica mudar;
-- registrar decisões relevantes em ADR (`docs/adr`);
-- pair programming ou revisão cruzada em migrações críticas;
-- nenhum membro deve manter um trabalho local por mais de uma ou duas semanas sem integração;
-- bugs críticos devem ser corrigidos em branch curta e cobertos por regressão;
-- reuniões técnicas devem produzir decisões escritas, não apenas acordos orais.
+## Colaboração no Git
 
-## Fluxo Git e Pull Requests
+### Branches
 
-Branches:
-
-- `main`: código estável;
-- `develop`: integração, quando o processo do projeto já utilizar essa branch;
+- `main`: versão estável;
 - `feat/nome-da-funcionalidade`;
 - `fix/nome-do-ajuste`;
 - `chore/nome-da-configuracao`;
-- `docs/nome-da-documentacao`;
-- `refactor/nome-da-refatoracao`.
+- `docs/nome-da-documentacao`.
 
-Regras:
+Não enviar commits diretamente para `main`.
 
-- nunca enviar código diretamente para `main`;
-- criar branch a partir da branch base atualizada;
-- manter commits pequenos e funcionais;
-- usar Conventional Commits:
+### Commits
+
+Use mensagens simples e descritivas:
 
 ```text
-feat: create mentoring request endpoint
+feat: add mentoring request endpoint
 fix: prevent duplicate agenda booking
-test: cover expired password reset token
-docs: document authentication contract
-chore: configure Flyway
+test: add login validation tests
+docs: update api integration instructions
 ```
 
-- manter o PR atualizado com a branch base;
-- solicitar pelo menos duas revisões em mudanças de segurança, banco ou arquitetura;
-- para PRs comuns, exigir pelo menos uma revisão;
-- o autor não pode aprovar o próprio código;
-- PR deve indicar endpoint, migração, feature flags e impactos em web/mobile;
-- comentários de revisão devem ser resolvidos antes do merge;
-- merge preferencialmente por squash ou merge strategy definida pelo time.
+### Pull Requests
 
-## Comandos iniciais
+Antes de abrir um Pull Request:
 
-Os comandos podem variar conforme Maven ou Gradle.
+- atualizar a branch com a base;
+- executar os testes;
+- validar a migração do banco;
+- verificar o contrato utilizado por Web e Mobile;
+- solicitar pelo menos uma revisão de outra pessoa;
+- resolver comentários antes do merge;
+- não incluir arquivos locais, secrets ou credenciais.
 
-```bash
-# Maven
-./mvnw spring-boot:run
-./mvnw test
-./mvnw verify
+Mudanças em banco, segurança ou contratos externos devem ter pelo menos duas revisões.
 
-# Gradle
-./gradlew bootRun
-./gradlew test
-./gradlew check
-```
+---
 
-Ambiente local com Docker:
+## Documentação da API
 
-```bash
-docker compose up -d
-```
+Utilizar Springdoc OpenAPI para disponibilizar a documentação.
 
-Swagger/OpenAPI local, após iniciar a aplicação:
+Após iniciar o projeto:
 
 ```text
-/swagger-ui.html
+/swagger-ui/index.html
 /v3/api-docs
 ```
 
-## Definição de pronto
+Cada endpoint novo deve possuir uma descrição suficiente para permitir que Web e Mobile entendam:
 
-Uma entrega somente está pronta quando:
+- parâmetros;
+- dados de entrada;
+- dados de retorno;
+- possíveis códigos de erro;
+- regras de autorização.
 
-- [ ] a funcionalidade segue o contrato acordado com Web e Mobile;
-- [ ] cadastro, consulta, alteração e exclusão possuem regras consistentes;
-- [ ] autenticação e autorização foram validadas;
-- [ ] entrada inválida gera resposta padronizada;
-- [ ] PostgreSQL e migrações Flyway foram testados;
-- [ ] testes unitários e de integração passaram;
-- [ ] não existem dados sensíveis em logs ou respostas;
-- [ ] endpoints estão documentados no OpenAPI;
-- [ ] consultas críticas foram analisadas quanto a N+1 e índices;
-- [ ] migrações foram testadas em banco vazio e existente;
-- [ ] o PR foi revisado por outro membro;
-- [ ] os impactos para Web e Mobile estão descritos;
-- [ ] o build e os testes passaram no CI;
-- [ ] o commit não contém secrets, arquivos locais ou credenciais.
+---
+
+## Comandos úteis
+
+Com Maven:
+
+```bash
+./mvnw spring-boot:run
+./mvnw test
+./mvnw verify
+```
+
+Com Docker:
+
+```bash
+docker compose up -d
+docker compose down
+```
+
+Os comandos disponíveis podem mudar dependendo da ferramenta escolhida pelo time.
+
+---
+
+## Critérios de conclusão
+
+Uma funcionalidade pode ser considerada concluída quando:
+
+- o endpoint está documentado;
+- os dados são validados;
+- Web e Mobile conseguem utilizar o contrato;
+- usuários sem autorização não conseguem executar a ação;
+- a alteração foi aplicada no PostgreSQL por Flyway;
+- existe pelo menos um teste relacionado;
+- o build ou os testes passaram;
+- outra pessoa revisou o Pull Request;
+- nenhum segredo foi enviado ao repositório.

@@ -487,14 +487,20 @@ Não enviar commits diretamente para `main`.
 
 ### Commits
 
-Use mensagens simples e descritivas:
+Cada commit deve conter:
+
+1. **Título obrigatório**: informar de forma curta o que foi alterado;
+2. **Descrição breve**: explicar o que foi adicionado ou corrigido.
+
+Exemplo:
 
 ```text
-feat: add mentoring request endpoint
-fix: prevent duplicate agenda booking
-test: add login validation tests
-docs: update api integration instructions
+Adicionar endpoint de login
+
+Cria o endpoint de autenticação e valida o e-mail e a senha do usuário.
 ```
+
+O título não deve ser genérico, como `update`, `ajustes` ou `commit`. A descrição pode conter uma ou duas frases objetivas.
 
 ### Pull Requests
 

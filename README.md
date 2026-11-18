@@ -11,7 +11,7 @@ Este README apresenta uma proposta organizada de desenvolvimento para o time de 
 ## 📚 Documentação relacionada
 
 - [Frontend Web](https://github.com/Sabios-app/Web-Front/blob/main/README.md) — aplicação web do ecossistema Sábios.
-- [Frontend Moble](https://github.com/Sabios-app/Mobile/blob/main/README.md) — serviço responsável pelas
+- [Frontend Mobile](https://github.com/Sabios-app/Mobile/blob/main/README.md) — serviço responsável pelas
   integrações de backend.
 
 ---

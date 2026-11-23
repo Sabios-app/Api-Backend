@@ -6,6 +6,10 @@ O backend é responsável pela API utilizada pelas versões Web e Mobile, pelos 
 
 Este README apresenta uma proposta organizada de desenvolvimento para o time de seis pessoas, sem exigir práticas complexas desde o início do projeto.
 
+## Atualizações recentes
+
+Consulte [UPDATE.md](./UPDATE.md) para ver todas as mudanças entregues no backend, incluindo novas funcionalidades, correções, alterações de banco e impactos em Web/Mobile.
+
 ---
 
 ## 📚 Documentação relacionada

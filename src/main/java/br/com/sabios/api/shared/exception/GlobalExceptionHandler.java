@@ -52,4 +52,13 @@ public class GlobalExceptionHandler {
                 "message", ex.getMessage()
         ));
     }
+
+    @ExceptionHandler(java.util.NoSuchElementException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(java.util.NoSuchElementException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "status", HttpStatus.NOT_FOUND.value(),
+                "code", "NOT_FOUND",
+                "message", ex.getMessage()
+        ));
+    }
 }

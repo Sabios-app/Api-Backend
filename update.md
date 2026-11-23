@@ -42,12 +42,31 @@ Este documento registra o progresso, configurações e funcionalidades implement
 - Padronização conforme contrato REST do projeto:
   - `400 Bad Request`: Erros de Bean Validation detalhando campos e mensagens.
   - `401 Unauthorized`: Credenciais inválidas no login ou token ausente/expirado.
-  - `409 Conflict`: E-mail já cadastrado.
+  - `404 Not Found`: Recurso não localizado (ex: especialista inexistente).
+  - `409 Conflict`: E-mail já cadastrado ou perfil já existente.
+
+---
+
+## 👨‍💼 Módulo de Especialistas (`specialists`)
+
+### 1. Modelo de Domínio
+- **Entidade `Specialist`**: Mapeada com JPA vinculada a `User` (1:1), contendo `title`, `specialty`, `bio`, `rating`, `hourly_rate`, `is_available` e timestamps de auditoria.
+- **Repositório `SpecialistRepository`**: Consulta otimizada com `@EntityGraph` para evitar N+1 ao buscar o usuário associado, além de query personalizada para busca textual por cargo, nome ou especialidade.
+
+### 2. DTOs e Regras de Negócio
+- `SpecialistResponse`: Dados estruturados para alimentar os cartões e detalhes da aplicação Web e Mobile.
+- `CreateSpecialistRequest` & `UpdateSpecialistRequest`: Validações de tamanho, obrigatoriedade e valores não-negativos para hora.
+- `SpecialistService`: Regras para criação e edição de perfil (restrito a conselheiros/administradores) e consulta paginada.
+
+### 3. Endpoints Disponíveis
+- `GET /api/v1/specialists`: Listagem pública paginada com suporte a filtros por especialidade e termo de busca.
+- `GET /api/v1/specialists/{id}`: Detalhes de um especialista específico.
+- `POST /api/v1/specialists/me`: Cadastro do perfil profissional do conselheiro autenticado.
+- `PATCH /api/v1/specialists/me`: Atualização de informações de perfil do conselheiro autenticado.
 
 ---
 
 ## 📋 Próximos Passos
-- [ ] **Módulo `specialists`**: Listagem paginada de conselheiros com filtros por especialidade e detalhes do especialista (`GET /api/v1/specialists/{id}`).
 - [ ] **Módulo `agenda`**: Tabela de disponibilidades e horários livres dos conselheiros.
 - [ ] **Módulo `mentorings`**: Solicitação, aceite e recusa de mentorias.
 - [ ] **Seed de Dados**: Migração `V2__seed_initial_data.sql` com conselheiros e dados de teste para consumo do Frontend e Mobile.

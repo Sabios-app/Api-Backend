@@ -29,6 +29,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
+                .cors(org.springframework.security.config.Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -40,7 +41,12 @@ public class SecurityConfig {
                                 "/v3/api-docs.yaml"
                         ).permitAll()
                         // Libera status e rotas públicas de auth
-                        .requestMatchers("/api/v1/status/**", "/api/v1/auth/**").permitAll()
+                        .requestMatchers(
+                                "/api/v1/status/**",
+                                "/api/v1/auth/**"
+                        ).permitAll()
+                        // Libera consulta pública de especialistas (GET)
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/specialists", "/api/v1/specialists/**").permitAll()
                         // Qualquer outra rota exigirá autenticação via JWT
                         .anyRequest().authenticated()
                 )

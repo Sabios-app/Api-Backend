@@ -45,8 +45,10 @@ public class SecurityConfig {
                                 "/api/v1/status/**",
                                 "/api/v1/auth/**"
                         ).permitAll()
-                        // Libera consulta pública de especialistas (GET)
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/specialists", "/api/v1/specialists/**").permitAll()
+                        // Libera consulta pública de especialistas, agenda e avaliações (GET)
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/specialists/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/agenda/specialists/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/reviews/specialists/**").permitAll()
                         // Qualquer outra rota exigirá autenticação via JWT
                         .anyRequest().authenticated()
                 )

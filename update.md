@@ -91,12 +91,37 @@ Este documento registra o progresso, configurações e funcionalidades implement
 
 ---
 
+## 🗓️ Módulo de Agenda (`agenda`)
+- **Entidade `Availability`**: Faixas de horários (`startTime`, `endTime`) e dias da semana dos especialistas.
+- `GET /api/v1/agenda/specialists/{specialistId}`: Consulta pública dos horários de atendimento de um conselheiro.
+- `GET /api/v1/agenda/me`: Horários cadastrados pelo conselheiro logado.
+- `POST /api/v1/agenda`: Conselheiro adiciona novo horário disponível na semana.
+- `DELETE /api/v1/agenda/{id}`: Conselheiro remove um horário.
+
+---
+
+## 💬 Módulo de Mensagens & Chat (`messages`)
+- **Entidades `Conversation` e `Message`**: Histórico de chat entre cliente e conselheiro.
+- `GET /api/v1/messages/conversations`: Lista todas as conversas do usuário logado ordenadas pela mensagem mais recente.
+- `GET /api/v1/messages/conversations/{id}`: Histórico completo de mensagens de uma conversa específica (apenas participantes autorizados).
+- `POST /api/v1/messages`: Envio de mensagem (criação automática da conversa caso seja o primeiro contato).
+
+---
+
+## ⭐ Módulo de Avaliações (`reviews`)
+- **Entidade `Review`**: Avaliação de 1 a 5 estrelas vinculada à mentoria realizada.
+- `GET /api/v1/reviews/specialists/{specialistId}`: Consulta pública das avaliações e comentários recebidos pelo especialista.
+- `POST /api/v1/reviews`: Cliente avalia mentoria concluída. A média geral (`rating`) do especialista é recalculada automaticamente no banco.
+
+---
+
 ## 🗄️ Migração do Banco de Dados (`Flyway`)
 - **`V1__create_initial_schema.sql`**: Tabelas fundamentais (`users`, `specialists`, `mentorings`) com UUIDs nativos e índices.
-- **`V2__update_mentorings_and_create_action_plans.sql`**: Adiciona suporte a link de chamada (`meeting_link`) e dúvidas (`doubts`) em `mentorings`, além da criação da tabela `action_plans`. Banco de dados limpo, sem inserções fictícias em migrações DDL.
+- **`V2__update_mentorings_and_create_action_plans.sql`**: Adiciona suporte a link de chamada (`meeting_link`) e dúvidas (`doubts`) em `mentorings`, além da criação da tabela `action_plans`.
+- **`V3__create_agenda_messages_reviews.sql`**: Criação das tabelas `availabilities`, `conversations`, `messages` e `reviews`. Schema 100% limpo, sem dados fictícios.
 
 ---
 
 ## 📋 Próximos Passos
-- [ ] **Módulo `messages`**: Conversas e chat em tempo real entre cliente e conselheiro.
-- [ ] **Módulo `reviews`**: Avaliações pós-mentoria com cálculo automático de média.
+- [ ] Conectar os serviços de API do Frontend React (`axios` / `fetch`) apontando para `http://localhost:8080/api/v1`.
+- [ ] Conectar os serviços de API do Mobile Flutter (`dio` / `http`).

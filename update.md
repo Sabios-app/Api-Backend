@@ -124,4 +124,5 @@ Este documento registra o progresso, configurações e funcionalidades implement
 
 ## 📋 Próximos Passos
 - [x] Conectar os serviços de API do Frontend React (`axios`) apontando para `http://localhost:8080/api/v1` (Autenticação, Especialistas, Mentorias, Planos de Ação).
-- [ ] Conectar os serviços de API do Mobile Flutter (`dio` / `http`).
+- [x] Conectar os serviços de API do Mobile Flutter (`http` e `shared_preferences`) apontando para o backend com suporte a emulador e web.
+- [x] Validar a execução conjunta dos serviços (Backend Spring Boot + Web Frontend Vite + PostgreSQL).

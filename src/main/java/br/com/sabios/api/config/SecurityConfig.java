@@ -32,6 +32,13 @@ public class SecurityConfig {
                 .cors(org.springframework.security.config.Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(handling -> handling.authenticationEntryPoint((request, response, ex) -> {
+                    // Sem token, token inválido/expirado ou emitido antes de uma troca de senha: 401 no contrato padrão de erro
+                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"status\":401,\"code\":\"UNAUTHORIZED\","
+                            + "\"message\":\"Autenticação necessária ou sessão expirada.\"}");
+                }))
                 .authorizeHttpRequests(auth -> auth
                         // Libera Swagger / OpenAPI
                         .requestMatchers(

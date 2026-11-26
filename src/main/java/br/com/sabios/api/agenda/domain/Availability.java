@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -27,8 +28,9 @@ public class Availability {
     @JoinColumn(name = "specialist_id", nullable = false)
     private Specialist specialist;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "day_of_week", nullable = false, length = 30)
-    private String dayOfWeek;
+    private DayOfWeek dayOfWeek;
 
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;

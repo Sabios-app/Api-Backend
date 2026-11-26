@@ -20,6 +20,7 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -131,13 +132,31 @@ class SabiosAppIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
 
+        // 5.1 Conselheiro cadastra disponibilidade para todos os dias da semana (09:00-12:00)
+        for (String day : new String[]{"MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"}) {
+            mockMvc.perform(post("/api/v1/agenda")
+                            .header("Authorization", "Bearer " + counselorToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"dayOfWeek\":\"" + day + "\",\"startTime\":\"09:00\",\"endTime\":\"12:00\"}"))
+                    .andExpect(status().isCreated());
+        }
+
+        // 5.2 Cliente consulta os horários livres e escolhe o primeiro
+        MvcResult slotsResult = mockMvc.perform(get("/api/v1/agenda/specialists/" + specialistId + "/slots")
+                        .param("from", LocalDate.now().plusDays(1).toString())
+                        .param("to", LocalDate.now().plusDays(3).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isNotEmpty())
+                .andReturn();
+        OffsetDateTime firstSlot = OffsetDateTime.parse(objectMapper.readTree(slotsResult.getResponse().getContentAsString()).get(0).asText());
+
         // 6. Cliente solicita mentoria
         CreateMentoringRequest mentRequest = new CreateMentoringRequest(
                 UUID.fromString(specialistId),
                 "Organização de Fluxo de Caixa",
                 "Preciso de ajuda com entradas e saídas",
                 "Como calcular margem de lucro?",
-                OffsetDateTime.now().plusDays(2)
+                firstSlot
         );
 
         MvcResult mentResult = mockMvc.perform(post("/api/v1/mentorings")
@@ -146,7 +165,7 @@ class SabiosAppIntegrationTests {
                         .content(objectMapper.writeValueAsString(mentRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("REQUESTED"))
-                .andExpect(jsonPath("$.meetingLink").exists())
+                .andExpect(jsonPath("$.meetingLink").doesNotExist())
                 .andReturn();
 
         String mentoringId = objectMapper.readTree(mentResult.getResponse().getContentAsString()).get("id").asText();

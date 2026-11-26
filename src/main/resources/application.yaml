@@ -1,5 +1,7 @@
 server:
   port: ${PORT:8080}
+  # Atrás de proxy/load balancer, usa X-Forwarded-For (só de proxies internos) para identificar o IP do cliente
+  forward-headers-strategy: native
 
 spring:
   application:
@@ -20,6 +22,11 @@ spring:
       hibernate:
         format_sql: true
 
+  data:
+    web:
+      pageable:
+        max-page-size: 50
+
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -38,3 +45,21 @@ app:
     expiration-hours: ${JWT_EXPIRATION_HOURS:24}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+  scheduling:
+    zone: ${SCHEDULING_ZONE:America/Sao_Paulo}
+    session-minutes: ${SCHEDULING_SESSION_MINUTES:60}
+  password-reset:
+    expiration-minutes: ${PASSWORD_RESET_EXPIRATION_MINUTES:60}
+    url-template: ${PASSWORD_RESET_URL_TEMPLATE:http://localhost:5173/redefinir-senha?token=%s}
+  mail:
+    enabled: ${MAIL_ENABLED:false}
+    from: ${MAIL_FROM:no-reply@sabios.app}
+  rate-limit:
+    login-max-failures-per-email: ${RATE_LIMIT_LOGIN_PER_EMAIL:5}
+    login-max-failures-per-ip: ${RATE_LIMIT_LOGIN_PER_IP:30}
+    login-window-minutes: ${RATE_LIMIT_LOGIN_WINDOW_MINUTES:15}
+    forgot-max-per-email: ${RATE_LIMIT_FORGOT_PER_EMAIL:3}
+    forgot-max-per-ip: ${RATE_LIMIT_FORGOT_PER_IP:10}
+    forgot-window-minutes: ${RATE_LIMIT_FORGOT_WINDOW_MINUTES:60}
+  mentoring:
+    expiration-check-ms: ${MENTORING_EXPIRATION_CHECK_MS:300000}

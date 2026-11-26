@@ -29,19 +29,23 @@ public class TokenService {
                 .withClaim("email", user.getEmail())
                 .withClaim("name", user.getName())
                 .withClaim("role", user.getRole().name())
+                .withIssuedAt(Instant.now())
                 .withExpiresAt(Instant.now().plus(expirationHours, ChronoUnit.HOURS))
                 .sign(algorithm);
     }
 
-    public Optional<UUID> validateTokenAndGetUserId(String token) {
+    /** Dados mínimos de um token válido. */
+    public record TokenData(UUID userId, Instant issuedAt) {}
+
+    public Optional<TokenData> parse(String token) {
         try {
             Algorithm algorithm = Algorithm.HMAC256(secret);
-            String subject = JWT.require(algorithm)
+            var decoded = JWT.require(algorithm)
                     .withIssuer("sabios-api")
                     .build()
-                    .verify(token)
-                    .getSubject();
-            return Optional.of(UUID.fromString(subject));
+                    .verify(token);
+            Instant issuedAt = decoded.getIssuedAtAsInstant() != null ? decoded.getIssuedAtAsInstant() : Instant.EPOCH;
+            return Optional.of(new TokenData(UUID.fromString(decoded.getSubject()), issuedAt));
         } catch (JWTVerificationException | IllegalArgumentException e) {
             return Optional.empty();
         }

@@ -35,16 +35,18 @@ public class AuthService {
             throw new BadRequestException("Não é possível se cadastrar com o perfil ADMIN.");
         }
 
-        if (userRepository.existsByEmail(request.email())) {
+        String normalizedEmail = request.email() != null ? request.email().trim().toLowerCase() : "";
+
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new IllegalArgumentException("Já existe um usuário cadastrado com este e-mail.");
         }
 
         User user = User.builder()
-                .name(request.name())
-                .email(request.email())
+                .name(request.name().trim())
+                .email(normalizedEmail)
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .role(request.role())
-                .phone(request.phone())
+                .phone(request.phone() != null ? request.phone().trim() : null)
                 .avatarUrl(request.avatarUrl())
                 .build();
 
@@ -61,15 +63,16 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request, String clientIp) {
-        rateLimiter.checkLogin(request.email(), clientIp);
+        String normalizedEmail = request.email() != null ? request.email().trim().toLowerCase() : "";
+        rateLimiter.checkLogin(normalizedEmail, clientIp);
 
-        User user = userRepository.findByEmail(request.email()).orElse(null);
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
         // A mesma mensagem para e-mail inexistente e senha errada evita revelar quais e-mails existem.
         if (user == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            rateLimiter.recordLoginFailure(request.email(), clientIp);
+            rateLimiter.recordLoginFailure(normalizedEmail, clientIp);
             throw new BadCredentialsException("E-mail ou senha inválidos.");
         }
-        rateLimiter.recordLoginSuccess(request.email());
+        rateLimiter.recordLoginSuccess(normalizedEmail);
 
         String token = tokenService.generateToken(user);
 

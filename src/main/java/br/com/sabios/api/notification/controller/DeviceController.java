@@ -47,16 +47,25 @@ public class DeviceController {
     @DeleteMapping("/token")
     @Operation(summary = "Desativa o token FCM (ex: logout)")
     public ResponseEntity<Map<String, String>> deactivateToken(
+            @AuthenticationPrincipal User user,
             @RequestBody Map<String, String> body
     ) {
         String fcmToken = body.get("fcmToken");
-        log.info("[FCM] Requisição recebida em DELETE /api/v1/devices/token para token: {}", fcmToken);
+        log.info("[FCM] Requisição recebida em DELETE /api/v1/devices/token para usuário: {} - token: {}", 
+                user != null ? user.getId() : "anônimo", fcmToken);
         if (fcmToken == null || fcmToken.isBlank()) {
             log.warn("[FCM] Falha ao desativar token FCM: token ausente ou em branco na requisição.");
             return ResponseEntity.badRequest().body(Map.of("message", "fcmToken é obrigatório."));
         }
-        deviceTokenService.deactivateToken(fcmToken);
+        deviceTokenService.deactivateToken(fcmToken, user);
         return ResponseEntity.ok(Map.of("message", "Token desativado com sucesso."));
+    }
+
+    @DeleteMapping("/tokens/all")
+    @Operation(summary = "Desativa todos os tokens FCM do usuário autenticado (logout de todos os aparelhos)")
+    public ResponseEntity<Map<String, String>> deactivateAllTokens(@AuthenticationPrincipal User user) {
+        deviceTokenService.deactivateAllUserTokens(user);
+        return ResponseEntity.ok(Map.of("message", "Todos os dispositivos foram desativados."));
     }
 
     @GetMapping("/me")

@@ -36,3 +36,7 @@ build/
 .env
 .env.local
 
+### Secrets & Credentials ###
+src/main/resources/firebase-service-account.json
+
+

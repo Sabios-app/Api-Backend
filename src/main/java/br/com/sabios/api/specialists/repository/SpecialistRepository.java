@@ -25,11 +25,11 @@ public interface SpecialistRepository extends JpaRepository<Specialist, UUID> {
     @EntityGraph(attributePaths = {"user"})
     @Query("""
         SELECT s FROM Specialist s
-        WHERE (:specialty IS NULL OR LOWER(s.specialty) LIKE LOWER(CONCAT('%', :specialty, '%')))
-          AND (:search IS NULL OR (
-                LOWER(s.title) LIKE LOWER(CONCAT('%', :search, '%')) OR
-                LOWER(s.user.name) LIKE LOWER(CONCAT('%', :search, '%')) OR
-                LOWER(s.specialty) LIKE LOWER(CONCAT('%', :search, '%'))
+        WHERE (CAST(:specialty AS string) IS NULL OR LOWER(s.specialty) LIKE LOWER(CONCAT('%', CAST(:specialty AS string), '%')))
+          AND (CAST(:search AS string) IS NULL OR (
+                LOWER(s.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR
+                LOWER(s.user.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR
+                LOWER(s.specialty) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
           ))
           AND s.isAvailable = true
     """)

@@ -66,7 +66,62 @@ Este documento registra o progresso, configurações e funcionalidades implement
 
 ---
 
+## 🤝 Módulo de Mentorias (`mentorings`)
+
+### 1. Modelo de Domínio e Status
+- **Status das Mentorias (`MentoringStatus`)**: `CONFIRMED`, `REQUESTED`, `COMPLETED`, `REJECTED`, `CANCELED`.
+- **Entidade `Mentoring`**: Vinculada com `User` (cliente) e `Specialist` (conselheiro), com `title`, `description`, `doubts`, `scheduledAt`, `meetingLink` (Google Meet) e timestamps.
+
+### 2. Endpoints Implementados
+- `POST /api/v1/mentorings`: Cliente solicita mentoria (status inicial `REQUESTED`).
+- `GET /api/v1/mentorings`: Lista as mentorias/solicitações do usuário logado (cliente ou conselheiro).
+- `GET /api/v1/mentorings/next`: Retorna a próxima mentoria futura confirmada com o link de conferência virtual.
+- `PATCH /api/v1/mentorings/{id}/accept`: Conselheiro indicado aceita a solicitação (`CONFIRMED`).
+- `PATCH /api/v1/mentorings/{id}/reject`: Conselheiro indicado recusa a solicitação (`REJECTED`).
+
+---
+
+## 📋 Módulo de Planos de Ação (`action-plans`)
+
+### 1. Modelo e Endpoints
+- **Entidade `ActionPlan`**: Tarefas e metas vinculadas ao cliente (`client_id`, `title`, `deadline`, `conselheiroNome`, `completed`).
+- `GET /api/v1/action-plans`: Lista tarefas do cliente autenticado ordenadas por data.
+- `POST /api/v1/action-plans`: Cria nova meta vinculada ao cliente.
+- `PATCH /api/v1/action-plans/{id}/toggle`: Alterna status entre concluído e pendente, validando posse do usuário.
+
+---
+
+## 🗓️ Módulo de Agenda (`agenda`)
+- **Entidade `Availability`**: Faixas de horários (`startTime`, `endTime`) e dias da semana dos especialistas.
+- `GET /api/v1/agenda/specialists/{specialistId}`: Consulta pública dos horários de atendimento de um conselheiro.
+- `GET /api/v1/agenda/me`: Horários cadastrados pelo conselheiro logado.
+- `POST /api/v1/agenda`: Conselheiro adiciona novo horário disponível na semana.
+- `DELETE /api/v1/agenda/{id}`: Conselheiro remove um horário.
+
+---
+
+## 💬 Módulo de Mensagens & Chat (`messages`)
+- **Entidades `Conversation` e `Message`**: Histórico de chat entre cliente e conselheiro.
+- `GET /api/v1/messages/conversations`: Lista todas as conversas do usuário logado ordenadas pela mensagem mais recente.
+- `GET /api/v1/messages/conversations/{id}`: Histórico completo de mensagens de uma conversa específica (apenas participantes autorizados).
+- `POST /api/v1/messages`: Envio de mensagem (criação automática da conversa caso seja o primeiro contato).
+
+---
+
+## ⭐ Módulo de Avaliações (`reviews`)
+- **Entidade `Review`**: Avaliação de 1 a 5 estrelas vinculada à mentoria realizada.
+- `GET /api/v1/reviews/specialists/{specialistId}`: Consulta pública das avaliações e comentários recebidos pelo especialista.
+- `POST /api/v1/reviews`: Cliente avalia mentoria concluída. A média geral (`rating`) do especialista é recalculada automaticamente no banco.
+
+---
+
+## 🗄️ Migração do Banco de Dados (`Flyway`)
+- **`V1__create_initial_schema.sql`**: Tabelas fundamentais (`users`, `specialists`, `mentorings`) com UUIDs nativos e índices.
+- **`V2__update_mentorings_and_create_action_plans.sql`**: Adiciona suporte a link de chamada (`meeting_link`) e dúvidas (`doubts`) em `mentorings`, além da criação da tabela `action_plans`.
+- **`V3__create_agenda_messages_reviews.sql`**: Criação das tabelas `availabilities`, `conversations`, `messages` e `reviews`. Schema 100% limpo, sem dados fictícios.
+
+---
+
 ## 📋 Próximos Passos
-- [ ] **Módulo `agenda`**: Tabela de disponibilidades e horários livres dos conselheiros.
-- [ ] **Módulo `mentorings`**: Solicitação, aceite e recusa de mentorias.
-- [ ] **Seed de Dados**: Migração `V2__seed_initial_data.sql` com conselheiros e dados de teste para consumo do Frontend e Mobile.
+- [ ] Conectar os serviços de API do Frontend React (`axios` / `fetch`) apontando para `http://localhost:8080/api/v1`.
+- [ ] Conectar os serviços de API do Mobile Flutter (`dio` / `http`).

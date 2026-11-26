@@ -1,10 +1,13 @@
 package br.com.sabios.api.specialists.service;
 
+import br.com.sabios.api.shared.exception.BadRequestException;
 import br.com.sabios.api.specialists.domain.Specialist;
 import br.com.sabios.api.specialists.dto.CreateSpecialistRequest;
+import br.com.sabios.api.specialists.dto.SpecialistFilter;
 import br.com.sabios.api.specialists.dto.SpecialistResponse;
 import br.com.sabios.api.specialists.dto.UpdateSpecialistRequest;
 import br.com.sabios.api.specialists.repository.SpecialistRepository;
+import br.com.sabios.api.specialists.repository.SpecialistSpecifications;
 import br.com.sabios.api.users.domain.Role;
 import br.com.sabios.api.users.domain.User;
 import org.springframework.data.domain.Page;
@@ -12,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -25,9 +29,24 @@ public class SpecialistService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SpecialistResponse> listSpecialists(String specialty, String search, Pageable pageable) {
-        return specialistRepository.findAvailableSpecialists(specialty, search, pageable)
+    public Page<SpecialistResponse> listSpecialists(SpecialistFilter filter, Pageable pageable) {
+        validateFilter(filter);
+        return specialistRepository.findAll(SpecialistSpecifications.matching(filter), pageable)
                 .map(SpecialistResponse::fromEntity);
+    }
+
+    private void validateFilter(SpecialistFilter filter) {
+        if (filter.minRating() != null
+                && (filter.minRating().compareTo(BigDecimal.ZERO) < 0 || filter.minRating().compareTo(new BigDecimal("5")) > 0)) {
+            throw new BadRequestException("A nota mínima deve estar entre 0 e 5.");
+        }
+        if ((filter.minPrice() != null && filter.minPrice().signum() < 0)
+                || (filter.maxPrice() != null && filter.maxPrice().signum() < 0)) {
+            throw new BadRequestException("Os valores de preço não podem ser negativos.");
+        }
+        if (filter.minPrice() != null && filter.maxPrice() != null && filter.minPrice().compareTo(filter.maxPrice()) > 0) {
+            throw new BadRequestException("O preço mínimo não pode ser maior que o preço máximo.");
+        }
     }
 
     @Transactional(readOnly = true)

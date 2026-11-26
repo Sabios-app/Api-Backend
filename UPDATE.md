@@ -25,6 +25,15 @@ Use apenas as linhas aplicáveis à entrega. Evite detalhes internos irrelevante
 
 ---
 
+## 2026-11-25 - Plano de ação completo e avaliações dos conselheiros
+
+- **Adicionado (plano de ação):** tarefa ligada à mentoria e ao conselheiro; o conselheiro atribui tarefas ao cliente (`POST /action-plans/mentorings/{id}`) e o cliente é notificado; prazo estruturado `dueDate`; editar (`PATCH /action-plans/{id}`) e remover (`DELETE`); histórico (`?completed=true`), vencidas (`?overdue=true`) e por mentoria (`GET /action-plans/mentorings/{id}`); momento da conclusão (`completedAt`).
+- **Adicionado (avaliações):** resumo com média e distribuição (`GET /reviews/specialists/{id}/summary`); editar e remover a própria avaliação; `GET /reviews/me`; `GET /reviews/pending` (mentorias concluídas ainda sem avaliação); notificação `REVIEW_RECEIVED` ao conselheiro.
+- **Corrigido:** `POST /reviews` agora exige mentoria **concluída** (antes aceitava qualquer status); a lista pública de avaliações não expõe mais e-mail, telefone nem perfil do cliente.
+- **Alterado:** `ActionPlanResponse` ganhou campos (`mentoringId`, `specialistId`, `dueDate`, `completedAt`, `overdue`, `assignedByCounselor`); os antigos continuam iguais. O `client` das avaliações passou a ser `{ name, avatarUrl }`. A lista de avaliações aceita `page` e `size` (máx. 50, padrão 50).
+- **Banco de dados:** migração `V6` (colunas novas em `action_plans` e `reviews.updated_at`).
+- **Impacto:** Web/Mobile não devem mais ler `client.email`, `client.phone`, `client.role` nem `client.id` das avaliações. Novos tipos de notificação: `ACTION_PLAN_ASSIGNED` e `REVIEW_RECEIVED`.
+
 ## 2026-11-25 - MVP de agendamento, recuperação de senha, notificações e segurança
 
 - **Adicionado:** recuperação de senha (`/auth/forgot-password`, `/auth/reset-password`); filtros de busca (nota, preço, dia atendido); horários livres (`/agenda/specialists/{id}/slots`); cancelar, concluir e informar link das mentorias; histórico (`?scope=`); notificações (`/notifications`); expiração automática de solicitações vencidas (`EXPIRED`); rate limit no login e na recuperação de senha.
@@ -121,12 +130,14 @@ Use apenas as linhas aplicáveis à entrega. Evite detalhes internos irrelevante
 ---
 
 ## 📋 Módulo de Planos de Ação (`action-plans`)
-
-### 1. Modelo e Endpoints
-- **Entidade `ActionPlan`**: Tarefas e metas vinculadas ao cliente (`client_id`, `title`, `deadline`, `conselheiroNome`, `completed`).
-- `GET /api/v1/action-plans`: Lista tarefas do cliente autenticado ordenadas por data.
-- `POST /api/v1/action-plans`: Cria nova meta vinculada ao cliente.
-- `PATCH /api/v1/action-plans/{id}/toggle`: Alterna status entre concluído e pendente, validando posse do usuário.
+- **Entidade `ActionPlan`**: tarefa do cliente (`client`), com `title`, `deadline` (texto, compatível com o front), `dueDate` (data), `completed`/`completedAt`, mentoria e conselheiro de origem (opcionais) e quem a criou (cliente ou conselheiro).
+- `GET /api/v1/action-plans?completed=&overdue=&mentoringId=`: cliente vê as próprias tarefas; conselheiro vê as que atribuiu.
+- `GET /api/v1/action-plans/mentorings/{mentoringId}`: tarefas de uma mentoria (cliente e conselheiro participantes).
+- `POST /api/v1/action-plans`: cliente cria a própria tarefa (`mentoringId` e `dueDate` opcionais).
+- `POST /api/v1/action-plans/mentorings/{mentoringId}`: conselheiro atribui uma tarefa ao cliente (mentoria confirmada ou concluída) e o cliente é notificado.
+- `PATCH /api/v1/action-plans/{id}` e `DELETE /api/v1/action-plans/{id}`: apenas quem criou a tarefa.
+- `PATCH /api/v1/action-plans/{id}/toggle`: o cliente conclui ou reabre (registra `completedAt`).
+- Regras: prazo não pode estar no passado; `overdue` = pendente com `dueDate` vencida (fuso `America/Sao_Paulo`).
 
 ---
 
@@ -148,9 +159,13 @@ Use apenas as linhas aplicáveis à entrega. Evite detalhes internos irrelevante
 ---
 
 ## ⭐ Módulo de Avaliações (`reviews`)
-- **Entidade `Review`**: Avaliação de 1 a 5 estrelas vinculada à mentoria realizada.
-- `GET /api/v1/reviews/specialists/{specialistId}`: Consulta pública das avaliações e comentários recebidos pelo especialista.
-- `POST /api/v1/reviews`: Cliente avalia mentoria concluída. A média geral (`rating`) do especialista é recalculada automaticamente no banco.
+- **Entidade `Review`**: nota de 1 a 5 e comentário (até 1000 caracteres) que o cliente dá ao conselheiro por mentoria **concluída**; uma por mentoria.
+- `GET /api/v1/reviews/specialists/{specialistId}?page=&size=`: lista pública (mais recentes primeiro). O avaliador aparece só como `{ name, avatarUrl }`.
+- `GET /api/v1/reviews/specialists/{specialistId}/summary`: média, total e distribuição de 1 a 5 estrelas.
+- `GET /api/v1/reviews/me`: cliente vê as que fez; conselheiro vê as que recebeu.
+- `GET /api/v1/reviews/pending`: mentorias concluídas do cliente ainda sem avaliação.
+- `POST /api/v1/reviews`: cliente avalia (exige mentoria `COMPLETED`); recalcula a nota do especialista e notifica o conselheiro.
+- `PATCH /api/v1/reviews/{id}` e `DELETE /api/v1/reviews/{id}`: o autor edita ou remove (o administrador também remove); a média é recalculada. Sem avaliações, a nota volta a `5.00` (padrão do cadastro).
 
 ---
 
@@ -197,9 +212,10 @@ Use apenas as linhas aplicáveis à entrega. Evite detalhes internos irrelevante
 ### Banco de dados
 - **`V4__password_reset_and_scheduling.sql`**: tabela `password_reset_tokens`, normalização de `availabilities.day_of_week` e índice `mentorings(specialist_id, scheduled_at)`.
 - **`V5__notifications_and_security_hardening.sql`**: tabela `notifications` e coluna `users.password_changed_at`.
+- **`V6__action_plan_links_and_review_updates.sql`**: colunas novas em `action_plans` e `reviews.updated_at`.
 
 ### Testes
-- Novas suítes `SchedulingAndRecoveryIntegrationTests` e `HardeningAndNotificationsIntegrationTests` (recuperação de senha, agenda, conflitos, cancelar/concluir, histórico, filtros, rate limit, JWT, notificações, expiração). O teste fim a fim existente passou a cadastrar disponibilidade antes de agendar.
+- Novas suítes `SchedulingAndRecoveryIntegrationTests` e `HardeningAndNotificationsIntegrationTests` e `ActionPlanAndReviewIntegrationTests` (recuperação de senha, agenda, conflitos, cancelar/concluir, histórico, filtros, rate limit, JWT, notificações, expiração). O teste fim a fim existente passou a cadastrar disponibilidade antes de agendar.
 
 ---
 
@@ -209,6 +225,7 @@ Use apenas as linhas aplicáveis à entrega. Evite detalhes internos irrelevante
 - **`V3__create_agenda_messages_reviews.sql`**: Criação das tabelas `availabilities`, `conversations`, `messages` e `reviews`. Schema 100% limpo, sem dados fictícios.
 - **`V4__password_reset_and_scheduling.sql`**: tokens de recuperação de senha, `day_of_week` padronizado e índice de conflito de horário.
 - **`V5__notifications_and_security_hardening.sql`**: notificações e `password_changed_at` (invalidação de JWT).
+- **`V6__action_plan_links_and_review_updates.sql`**: vínculos, prazo em data e `completed_at` no plano de ação; `reviews.updated_at`.
 
 ---
 

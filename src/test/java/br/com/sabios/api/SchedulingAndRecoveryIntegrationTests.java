@@ -252,6 +252,18 @@ class SchedulingAndRecoveryIntegrationTests {
         assertEquals(0, searchTotal(specialty, "&availableDay=THURSDAY"));
         assertEquals(1, searchTotal(specialty, "&availableDay=WEDNESDAY&minPrice=100&minRating=4"));
 
+        // o catálogo público não expõe e-mail nem telefone do conselheiro
+        String listBody = mockMvc.perform(get("/api/v1/specialists?specialty=" + specialty))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        JsonNode listedUser = objectMapper.readTree(listBody).get("content").get(0).get("user");
+        assertEquals("Conselheiro Filtro Teste", listedUser.get("name").asText());
+        assertFalse(listedUser.has("email") || listedUser.has("phone") || listedUser.has("role"),
+                "dados de contato do conselheiro não podem ser públicos");
+        String detailBody = mockMvc.perform(get("/api/v1/specialists/" + counselor.specialistId))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        JsonNode detailUser = objectMapper.readTree(detailBody).get("user");
+        assertFalse(detailUser.has("email") || detailUser.has("phone") || detailUser.has("role"));
+
         mockMvc.perform(get("/api/v1/specialists?minRating=9")).andExpect(status().isBadRequest());
         mockMvc.perform(get("/api/v1/specialists?minPrice=200&maxPrice=100")).andExpect(status().isBadRequest());
         mockMvc.perform(get("/api/v1/specialists?availableDay=SEGUNDA")).andExpect(status().isBadRequest());

@@ -25,6 +25,11 @@ Use apenas as linhas aplicáveis à entrega. Evite detalhes internos irrelevante
 
 ---
 
+## 2026-11-25 - Privacidade dos dados do conselheiro
+
+- **Corrigido (segurança):** `GET /specialists`, `GET /specialists/{id}` e os objetos `specialist` de mentorias e conversas deixaram de expor e-mail, telefone e perfil do conselheiro. O campo `user` agora traz apenas `{ id, name, avatarUrl }`.
+- **Impacto:** Web/Mobile não devem ler `specialist.user.email`, `specialist.user.phone` nem `specialist.user.role`. Os dados completos do próprio usuário continuam em `GET /users/me` e na resposta de login.
+
 ## 2026-11-25 - Plano de ação completo e avaliações dos conselheiros
 
 - **Adicionado (plano de ação):** tarefa ligada à mentoria e ao conselheiro; o conselheiro atribui tarefas ao cliente (`POST /action-plans/mentorings/{id}`) e o cliente é notificado; prazo estruturado `dueDate`; editar (`PATCH /action-plans/{id}`) e remover (`DELETE`); histórico (`?completed=true`), vencidas (`?overdue=true`) e por mentoria (`GET /action-plans/mentorings/{id}`); momento da conclusão (`completedAt`).

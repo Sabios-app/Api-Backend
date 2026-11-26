@@ -4,6 +4,7 @@ Este documento registra o progresso, configurações e funcionalidades implement
 
 ---
 
+<<<<<<< HEAD
 ## 2026-11-25 - Push Notifications via FCM e Admin Seeder
 
 - **Adicionado:** Envio de notificações push mobile via Firebase Cloud Messaging (`/api/v1/push-notifications/send`, `/api/v1/push-notifications/send/broadcast` e `/api/v1/push-notifications/send/topic`).
@@ -44,6 +45,8 @@ Este documento registra o progresso, configurações e funcionalidades implement
 
 # Estado atual por módulo
 
+=======
+>>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc
 ## 🚀 Versão Inicial e Infraestrutura
 
 ### 1. Compatibilização e Build
@@ -104,6 +107,7 @@ Este documento registra o progresso, configurações e funcionalidades implement
 - `POST /api/v1/specialists/me`: Cadastro do perfil profissional do conselheiro autenticado.
 - `PATCH /api/v1/specialists/me`: Atualização de informações de perfil do conselheiro autenticado.
 
+<<<<<<< HEAD
 ---
 
 ## 🤝 Módulo de Mentorias (`mentorings`)
@@ -183,11 +187,47 @@ Este documento registra o progresso, configurações e funcionalidades implement
   - `POST /api/v1/push-notifications/send`: envio direto para os dispositivos de um usuário específico (`ADMIN`).
   - `POST /api/v1/push-notifications/send/broadcast`: envio em massa para todos os dispositivos ativos, com batching de até 500 tokens (`ADMIN`).
   - `POST /api/v1/push-notifications/send/topic`: envio para tópicos de inscrição (`ADMIN`).
+=======
+
+---
+
+## 🔔 Módulo de Notificações e Push (`notification`)
+
+### 1. Infraestrutura e Firebase Admin SDK
+- **Dependência**: Adicionado `firebase-admin` (v9.4.3) ao `pom.xml`.
+- **Configuração (`FirebaseConfig`)**: Suporte a carregamento de credenciais via arquivo JSON local (`src/main/resources/firebase-service-account.json`) ou via variável de ambiente `FIREBASE_CREDENTIALS_JSON` (JSON inline para ambiente de nuvem/produção).
+- **Segurança de Métodos**: Habilitado `@EnableMethodSecurity` no `SecurityConfig` para proteger endpoints restritos a administradores com `@PreAuthorize("hasRole('ADMIN')")`.
+
+### 2. Modelo de Domínio e Banco de Dados
+- **Migration Flyway (`V2__create_device_tokens.sql`)**: Criação da tabela `device_tokens` com suporte a múltiplos dispositivos por usuário, status de ativação (`active`) e índices otimizados para busca por `fcm_token` e `user_id`.
+- **Entidade `DeviceToken`**: Mapeada com JPA contendo relacionamento `@ManyToOne` com `User`, campos `device_info`, `fcm_token` e timestamps de auditoria.
+- **Repositório `DeviceTokenRepository`**: Métodos para consulta por token, tokens ativos por usuário e todos os tokens ativos do sistema.
+
+### 3. Regras de Negócio e Serviços
+- **Gestão de Tokens (`DeviceTokenService`)**:
+  - Registro e atualização de tokens FCM vinculados ao usuário autenticado (reatribui automaticamente caso o dispositivo mude de usuário).
+  - Desativação de tokens sob demanda (ex: logout).
+  - Consulta de tokens ativos com logs detalhados de auditoria.
+- **Disparo de Notificações (`NotificationService`)**:
+  - Envio individual para os aparelhos de um usuário específico (`sendToUser`).
+  - Envio em massa/broadcast (`sendBroadcast`): particionamento automático em lotes de até 500 tokens (respeitando os limites do Firebase Multicast API).
+  - Envio para tópicos do Firebase (`sendToTopic`).
+  - Limpeza automática: desativação transparente de tokens expirados/desinstalados quando o Firebase reporta erro `UNREGISTERED`.
+
+### 4. Endpoints Disponíveis
+- `POST /api/v1/devices/token`: Registra ou atualiza o token FCM do dispositivo do usuário logado.
+- `DELETE /api/v1/devices/token`: Desativa o token FCM especificado (logout).
+- `GET /api/v1/devices/me`: Lista os dispositivos ativos registrados do usuário logado.
+- `POST /api/v1/notifications/send`: Disparo de notificação para um usuário específico (restrito a `ADMIN`).
+- `POST /api/v1/notifications/send/broadcast`: Disparo em massa para todos os dispositivos ativos (restrito a `ADMIN`).
+- `POST /api/v1/notifications/send/topic`: Disparo para tópicos de inscrição (restrito a `ADMIN`).
+>>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc
 
 ---
 
 ## 🛠️ Seeds e Cargas Iniciais
 - **`AdminSeeder` (`CommandLineRunner`)**: Criação automática do usuário administrador padrão (`admin@sabios.com.br` com role `ADMIN`) na inicialização da aplicação, caso ainda não exista no banco de dados.
+<<<<<<< HEAD
 
 ---
 
@@ -199,10 +239,18 @@ Este documento registra o progresso, configurações e funcionalidades implement
 - **`V5__notifications_and_security_hardening.sql`**: Notificações in-app e invalidação de JWT (`password_changed_at`).
 - **`V6__action_plan_links_and_review_updates.sql`**: Vínculos de planos de ação e atualizações em avaliações.
 - **`V7__create_device_tokens.sql`**: Armazenamento de tokens FCM de dispositivos (`device_tokens`).
+=======
+>>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc
 
 ---
 
 ## 📋 Próximos Passos
+<<<<<<< HEAD
 - [x] Conectar os serviços de API do Frontend React (`axios`) apontando para `http://localhost:8080/api/v1` (Autenticação, Especialistas, Mentorias, Planos de Ação).
 - [x] Conectar os serviços de API do Mobile Flutter (`http` e `shared_preferences`) apontando para o backend com suporte a emulador e web.
 - [x] Validar a execução conjunta dos serviços (Backend Spring Boot + Web Frontend Vite + PostgreSQL).
+=======
+- [ ] **Módulo `agenda`**: Tabela de disponibilidades e horários livres dos conselheiros.
+- [ ] **Módulo `mentorings`**: Solicitação, aceite e recusa de mentorias.
+- [ ] **Seed de Dados**: Migração `V3__seed_initial_data.sql` com conselheiros e dados de teste para consumo do Frontend e Mobile.
+>>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc

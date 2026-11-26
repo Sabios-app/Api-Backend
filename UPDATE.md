@@ -64,6 +64,7 @@ Este documento registra o progresso, configurações e funcionalidades implement
 - `POST /api/v1/specialists/me`: Cadastro do perfil profissional do conselheiro autenticado.
 - `PATCH /api/v1/specialists/me`: Atualização de informações de perfil do conselheiro autenticado.
 
+
 ---
 
 ## 🔔 Módulo de Notificações e Push (`notification`)

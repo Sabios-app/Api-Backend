@@ -123,5 +123,5 @@ Este documento registra o progresso, configurações e funcionalidades implement
 ---
 
 ## 📋 Próximos Passos
-- [ ] Conectar os serviços de API do Frontend React (`axios` / `fetch`) apontando para `http://localhost:8080/api/v1`.
+- [x] Conectar os serviços de API do Frontend React (`axios`) apontando para `http://localhost:8080/api/v1` (Autenticação, Especialistas, Mentorias, Planos de Ação).
 - [ ] Conectar os serviços de API do Mobile Flutter (`dio` / `http`).

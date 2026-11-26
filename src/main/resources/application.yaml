@@ -46,6 +46,12 @@ app:
     expiration-hours: ${JWT_EXPIRATION_HOURS:24}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+<<<<<<< HEAD
+  firebase:
+    credentials-file: ${FIREBASE_CREDENTIALS_FILE:firebase-service-account.json}
+    credentials-json: ${FIREBASE_CREDENTIALS_JSON:}
+=======
+>>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc
   scheduling:
     zone: ${SCHEDULING_ZONE:America/Sao_Paulo}
     session-minutes: ${SCHEDULING_SESSION_MINUTES:60}

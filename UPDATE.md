@@ -4,6 +4,49 @@ Este documento registra o progresso, configurações e funcionalidades implement
 
 ---
 
+<<<<<<< HEAD
+## 2026-11-25 - Push Notifications via FCM e Admin Seeder
+
+- **Adicionado:** Envio de notificações push mobile via Firebase Cloud Messaging (`/api/v1/push-notifications/send`, `/api/v1/push-notifications/send/broadcast` e `/api/v1/push-notifications/send/topic`).
+- **Adicionado:** Registro e desativação de tokens de dispositivos FCM (`/api/v1/devices/token`).
+- **Adicionado:** `AdminSeeder` para criação automática do usuário administrador padrão (`admin@sabios.com.br`) na inicialização da aplicação.
+- **Banco de dados:** Migração `V7__create_device_tokens.sql` (tabela `device_tokens` com índices e status ativo).
+- **Segurança:** Suporte a credenciais Firebase locais e via env var JSON inline (`FIREBASE_CREDENTIALS_JSON`).
+
+## 2026-11-25 - Privacidade dos dados do conselheiro
+
+- **Corrigido (segurança):** `GET /specialists`, `GET /specialists/{id}` e os objetos `specialist` de mentorias e conversas deixaram de expor e-mail, telefone e perfil do conselheiro. O campo `user` agora traz apenas `{ id, name, avatarUrl }`.
+- **Impacto:** Web/Mobile não devem ler `specialist.user.email`, `specialist.user.phone` nem `specialist.user.role`. Os dados completos do próprio usuário continuam em `GET /users/me` e na resposta de login.
+
+## 2026-11-25 - Plano de ação completo e avaliações dos conselheiros
+
+- **Adicionado (plano de ação):** tarefa ligada à mentoria e ao conselheiro; o conselheiro atribui tarefas ao cliente (`POST /action-plans/mentorings/{id}`) e o cliente é notificado; prazo estruturado `dueDate`; editar (`PATCH /action-plans/{id}`) e remover (`DELETE`); histórico (`?completed=true`), vencidas (`?overdue=true`) e por mentoria (`GET /action-plans/mentorings/{id}`); momento da conclusão (`completedAt`).
+- **Adicionado (avaliações):** resumo com média e distribuição (`GET /reviews/specialists/{id}/summary`); editar e remover a própria avaliação; `GET /reviews/me`; `GET /reviews/pending` (mentorias concluídas ainda sem avaliação); notificação `REVIEW_RECEIVED` ao conselheiro.
+- **Corrigido:** `POST /reviews` agora exige mentoria **concluída** (antes aceitava qualquer status); a lista pública de avaliações não expõe mais e-mail, telefone nem perfil do cliente.
+- **Alterado:** `ActionPlanResponse` ganhou campos (`mentoringId`, `specialistId`, `dueDate`, `completedAt`, `overdue`, `assignedByCounselor`); os antigos continuam iguais. O `client` das avaliações passou a ser `{ name, avatarUrl }`. A lista de avaliações aceita `page` e `size` (máx. 50, padrão 50).
+- **Banco de dados:** migração `V6` (colunas novas em `action_plans` e `reviews.updated_at`).
+- **Impacto:** Web/Mobile não devem mais ler `client.email`, `client.phone`, `client.role` nem `client.id` das avaliações. Novos tipos de notificação: `ACTION_PLAN_ASSIGNED` e `REVIEW_RECEIVED`.
+
+## 2026-11-25 - MVP de agendamento, recuperação de senha, notificações e segurança
+
+- **Adicionado:** recuperação de senha (`/auth/forgot-password`, `/auth/reset-password`); filtros de busca (nota, preço, dia atendido); horários livres (`/agenda/specialists/{id}/slots`); cancelar, concluir e informar link das mentorias; histórico (`?scope=`); notificações (`/notifications`); expiração automática de solicitações vencidas (`EXPIRED`); rate limit no login e na recuperação de senha.
+- **Alterado:** `dayOfWeek` da agenda agora é `MONDAY..SUNDAY`; a solicitação de mentoria valida disponibilidade e conflitos; `meetingLink` vem `null` até o conselheiro informar um link real; sem token a API responde `401` (antes `403`).
+- **Segurança:** `register` recusa `role: ADMIN`; redefinir a senha invalida os JWT antigos.
+- **Banco de dados:** migrações `V4` e `V5`.
+- **Impacto:** Web/Mobile devem usar `dayOfWeek` em inglês, tratar `401`, `429` e o status `EXPIRED`, e o Web precisa da tela `/redefinir-senha?token=`. Detalhes na seção "MVP" abaixo.
+- **Documentação:** `update.md` e `UPDATE.md` eram arquivos distintos no git (colidem no Windows); unificados neste arquivo.
+
+## 2026-11-23 - Padronização do registro de mudanças
+
+- **Adicionado:** criado este arquivo para centralizar as atualizações do backend.
+- **Documentação:** inclusão de um acesso direto às atualizações na página inicial do README.
+
+---
+
+# Estado atual por módulo
+
+=======
+>>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc
 ## 🚀 Versão Inicial e Infraestrutura
 
 ### 1. Compatibilização e Build
@@ -64,6 +107,87 @@ Este documento registra o progresso, configurações e funcionalidades implement
 - `POST /api/v1/specialists/me`: Cadastro do perfil profissional do conselheiro autenticado.
 - `PATCH /api/v1/specialists/me`: Atualização de informações de perfil do conselheiro autenticado.
 
+<<<<<<< HEAD
+---
+
+## 🤝 Módulo de Mentorias (`mentorings`)
+
+### 1. Modelo de Domínio e Status
+- **Status das Mentorias (`MentoringStatus`)**: `CONFIRMED`, `REQUESTED`, `COMPLETED`, `REJECTED`, `CANCELED`, `EXPIRED`.
+- **Entidade `Mentoring`**: Vinculada com `User` (cliente) e `Specialist` (conselheiro), com `title`, `description`, `doubts`, `scheduledAt`, `meetingLink` (Google Meet) e timestamps.
+
+### 2. Endpoints Implementados
+- `POST /api/v1/mentorings`: Cliente solicita mentoria (status inicial `REQUESTED`).
+- `GET /api/v1/mentorings`: Lista as mentorias/solicitações do usuário logado (cliente ou conselheiro).
+- `GET /api/v1/mentorings/next`: Retorna a próxima mentoria futura confirmada com o link de conferência virtual.
+- `PATCH /api/v1/mentorings/{id}/accept`: Conselheiro indicado aceita a solicitação (`CONFIRMED`).
+- `PATCH /api/v1/mentorings/{id}/reject`: Conselheiro indicado recusa a solicitação (`REJECTED`).
+- `PATCH /api/v1/mentorings/{id}/cancel`: Cancelamento de mentoria futura pendente ou confirmada.
+- `PATCH /api/v1/mentorings/{id}/complete`: Conclusão da mentoria após seu início.
+- `PATCH /api/v1/mentorings/{id}/meeting-link`: Atualização do link de reunião pelo conselheiro.
+
+---
+
+## 📋 Módulo de Planos de Ação (`action-plans`)
+- **Entidade `ActionPlan`**: tarefa do cliente (`client`), com `title`, `deadline` (texto, compatível com o front), `dueDate` (data), `completed`/`completedAt`, mentoria e conselheiro de origem (opcionais) e quem a criou (cliente ou conselheiro).
+- `GET /api/v1/action-plans?completed=&overdue=&mentoringId=`: cliente vê as próprias tarefas; conselheiro vê as que atribuiu.
+- `GET /api/v1/action-plans/mentorings/{mentoringId}`: tarefas de uma mentoria (cliente e conselheiro participantes).
+- `POST /api/v1/action-plans`: cliente cria a própria tarefa (`mentoringId` e `dueDate` opcionais).
+- `POST /api/v1/action-plans/mentorings/{mentoringId}`: conselheiro atribui uma tarefa ao cliente (mentoria confirmada ou concluída) e o cliente é notificado.
+- `PATCH /api/v1/action-plans/{id}` e `DELETE /api/v1/action-plans/{id}`: apenas quem criou a tarefa.
+- `PATCH /api/v1/action-plans/{id}/toggle`: o cliente conclui ou reabre (registra `completedAt`).
+- Regras: prazo não pode estar no passado; `overdue` = pendente com `dueDate` vencida (fuso `America/Sao_Paulo`).
+
+---
+
+## 🗓️ Módulo de Agenda (`agenda`)
+- **Entidade `Availability`**: Faixas de horários (`startTime`, `endTime`) e dias da semana dos especialistas (`MONDAY..SUNDAY`).
+- `GET /api/v1/agenda/specialists/{specialistId}`: Consulta pública dos horários de atendimento de um conselheiro.
+- `GET /api/v1/agenda/specialists/{specialistId}/slots`: Início de cada sessão livre de 60 min.
+- `GET /api/v1/agenda/me`: Horários cadastrados pelo conselheiro logado.
+- `POST /api/v1/agenda`: Conselheiro adiciona novo horário disponível na semana.
+- `DELETE /api/v1/agenda/{id}`: Conselheiro remove um horário.
+
+---
+
+## 💬 Módulo de Mensagens & Chat (`messages`)
+- **Entidades `Conversation` e `Message`**: Histórico de chat entre cliente e conselheiro.
+- `GET /api/v1/messages/conversations`: Lista todas as conversas do usuário logado ordenadas pela mensagem mais recente.
+- `GET /api/v1/messages/conversations/{id}`: Histórico completo de mensagens de uma conversa específica (apenas participantes autorizados).
+- `POST /api/v1/messages`: Envio de mensagem (criação automática da conversa caso seja o primeiro contato).
+
+---
+
+## ⭐ Módulo de Avaliações (`reviews`)
+- **Entidade `Review`**: nota de 1 a 5 e comentário (até 1000 caracteres) que o cliente dá ao conselheiro por mentoria **concluída**; uma por mentoria.
+- `GET /api/v1/reviews/specialists/{specialistId}?page=&size=`: lista pública (mais recentes primeiro). O avaliador aparece só como `{ name, avatarUrl }`.
+- `GET /api/v1/reviews/specialists/{specialistId}/summary`: média, total e distribuição de 1 a 5 estrelas.
+- `GET /api/v1/reviews/me`: cliente vê as que fez; conselheiro vê as que recebeu.
+- `GET /api/v1/reviews/pending`: mentorias concluídas do cliente ainda sem avaliação.
+- `POST /api/v1/reviews`: cliente avalia (exige mentoria `COMPLETED`); recalcula a nota do especialista e notifica o conselheiro.
+- `PATCH /api/v1/reviews/{id}` e `DELETE /api/v1/reviews/{id}`: o autor edita ou remove (o administrador também remove); a média é recalculada. Sem avaliações, a nota volta a `5.00` (padrão do cadastro).
+
+---
+
+## 🔔 Notificações In-App (`notifications`)
+- `GET /api/v1/notifications?unreadOnly=&page=&size=`: lista de notificações do usuário logado.
+- `GET /api/v1/notifications/unread-count`: quantidade de notificações não lidas.
+- `PATCH /api/v1/notifications/{id}/read`: marca notificação específica como lida.
+- `PATCH /api/v1/notifications/read-all`: marca todas como lidas.
+
+---
+
+## 📱 Notificações Push Mobile via FCM (`notification`)
+- **Infraestrutura**: Google Firebase Admin SDK para envio de push notifications.
+- **Gestão de Dispositivos (`/api/v1/devices`)**:
+  - `POST /api/v1/devices/token`: registra ou atualiza o token FCM do dispositivo.
+  - `DELETE /api/v1/devices/token`: desativa o token FCM (logout).
+  - `GET /api/v1/devices/me`: lista os dispositivos ativos do usuário autenticado.
+- **Disparo de Push (`/api/v1/push-notifications`)**:
+  - `POST /api/v1/push-notifications/send`: envio direto para os dispositivos de um usuário específico (`ADMIN`).
+  - `POST /api/v1/push-notifications/send/broadcast`: envio em massa para todos os dispositivos ativos, com batching de até 500 tokens (`ADMIN`).
+  - `POST /api/v1/push-notifications/send/topic`: envio para tópicos de inscrição (`ADMIN`).
+=======
 
 ---
 
@@ -97,16 +221,36 @@ Este documento registra o progresso, configurações e funcionalidades implement
 - `POST /api/v1/notifications/send`: Disparo de notificação para um usuário específico (restrito a `ADMIN`).
 - `POST /api/v1/notifications/send/broadcast`: Disparo em massa para todos os dispositivos ativos (restrito a `ADMIN`).
 - `POST /api/v1/notifications/send/topic`: Disparo para tópicos de inscrição (restrito a `ADMIN`).
+>>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc
 
 ---
 
 ## 🛠️ Seeds e Cargas Iniciais
-
 - **`AdminSeeder` (`CommandLineRunner`)**: Criação automática do usuário administrador padrão (`admin@sabios.com.br` com role `ADMIN`) na inicialização da aplicação, caso ainda não exista no banco de dados.
+<<<<<<< HEAD
+
+---
+
+## 🗄️ Migrações do Banco de Dados (`Flyway`)
+- **`V1__create_initial_schema.sql`**: Tabelas fundamentais (`users`, `specialists`, `mentorings`).
+- **`V2__update_mentorings_and_create_action_plans.sql`**: Suporte a links de chamada e criação de `action_plans`.
+- **`V3__create_agenda_messages_reviews.sql`**: Tabelas `availabilities`, `conversations`, `messages` e `reviews`.
+- **`V4__password_reset_and_scheduling.sql`**: Tokens de recuperação de senha e normalização de agenda.
+- **`V5__notifications_and_security_hardening.sql`**: Notificações in-app e invalidação de JWT (`password_changed_at`).
+- **`V6__action_plan_links_and_review_updates.sql`**: Vínculos de planos de ação e atualizações em avaliações.
+- **`V7__create_device_tokens.sql`**: Armazenamento de tokens FCM de dispositivos (`device_tokens`).
+=======
+>>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc
 
 ---
 
 ## 📋 Próximos Passos
+<<<<<<< HEAD
+- [x] Conectar os serviços de API do Frontend React (`axios`) apontando para `http://localhost:8080/api/v1` (Autenticação, Especialistas, Mentorias, Planos de Ação).
+- [x] Conectar os serviços de API do Mobile Flutter (`http` e `shared_preferences`) apontando para o backend com suporte a emulador e web.
+- [x] Validar a execução conjunta dos serviços (Backend Spring Boot + Web Frontend Vite + PostgreSQL).
+=======
 - [ ] **Módulo `agenda`**: Tabela de disponibilidades e horários livres dos conselheiros.
 - [ ] **Módulo `mentorings`**: Solicitação, aceite e recusa de mentorias.
 - [ ] **Seed de Dados**: Migração `V3__seed_initial_data.sql` com conselheiros e dados de teste para consumo do Frontend e Mobile.
+>>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc

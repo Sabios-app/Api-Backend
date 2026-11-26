@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import java.util.UUID;
 
-public record SendNotificationRequest(
+public record SendPushNotificationRequest(
         @NotNull(message = "O ID do usuário destinatário é obrigatório.")
         UUID userId,
 

@@ -1,8 +1,8 @@
 package br.com.sabios.api.notification.service;
 
 import br.com.sabios.api.notification.dto.BroadcastNotificationRequest;
-import br.com.sabios.api.notification.dto.NotificationResponse;
-import br.com.sabios.api.notification.dto.SendNotificationRequest;
+import br.com.sabios.api.notification.dto.PushNotificationResponse;
+import br.com.sabios.api.notification.dto.SendPushNotificationRequest;
 import com.google.firebase.messaging.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,25 +14,25 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-public class NotificationService {
+public class PushNotificationService {
 
-    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+    private static final Logger log = LoggerFactory.getLogger(PushNotificationService.class);
 
     private final DeviceTokenService deviceTokenService;
 
-    public NotificationService(DeviceTokenService deviceTokenService) {
+    public PushNotificationService(DeviceTokenService deviceTokenService) {
         this.deviceTokenService = deviceTokenService;
     }
 
     /**
      * Envia push notification para todos os dispositivos ativos de um usuário.
      */
-    public NotificationResponse sendToUser(SendNotificationRequest request) {
+    public PushNotificationResponse sendToUser(SendPushNotificationRequest request) {
         List<String> tokens = deviceTokenService.getActiveTokensByUserId(request.userId());
 
         if (tokens.isEmpty()) {
             log.warn("Nenhum token FCM ativo encontrado para o usuário {}", request.userId());
-            return new NotificationResponse(0, 0, List.of());
+            return new PushNotificationResponse(0, 0, List.of());
         }
 
         return sendToTokens(tokens, request.title(), request.body(), request.data());
@@ -42,12 +42,12 @@ public class NotificationService {
      * Envia push notification em massa (broadcast) para todos os dispositivos ativos da base.
      * Divide automaticamente em lotes de até 500 tokens (limite da API Multicast do FCM).
      */
-    public NotificationResponse sendBroadcast(BroadcastNotificationRequest request) {
+    public PushNotificationResponse sendBroadcast(BroadcastNotificationRequest request) {
         List<String> tokens = deviceTokenService.getAllActiveTokens();
 
         if (tokens.isEmpty()) {
             log.warn("[FCM] Nenhum token ativo encontrado para envio em massa.");
-            return new NotificationResponse(0, 0, List.of());
+            return new PushNotificationResponse(0, 0, List.of());
         }
 
         log.info("[FCM] Iniciando envio em massa para {} dispositivo(s) ativos.", tokens.size());
@@ -60,14 +60,14 @@ public class NotificationService {
         int batchSize = 500;
         for (int i = 0; i < tokens.size(); i += batchSize) {
             List<String> batch = tokens.subList(i, Math.min(i + batchSize, tokens.size()));
-            NotificationResponse batchResponse = sendToTokens(batch, request.title(), request.body(), request.data());
+            PushNotificationResponse batchResponse = sendToTokens(batch, request.title(), request.body(), request.data());
             totalSuccess += batchResponse.successCount();
             totalFailure += batchResponse.failureCount();
             allMessageIds.addAll(batchResponse.messageIds());
         }
 
         log.info("[FCM] Broadcast finalizado. Total de sucessos: {}, falhas: {}", totalSuccess, totalFailure);
-        return new NotificationResponse(totalSuccess, totalFailure, allMessageIds);
+        return new PushNotificationResponse(totalSuccess, totalFailure, allMessageIds);
     }
 
     /**
@@ -105,7 +105,7 @@ public class NotificationService {
     /**
      * Envia push notification para múltiplos tokens (multicast).
      */
-    public NotificationResponse sendToTokens(List<String> tokens, String title, String body, Map<String, String> data) {
+    public PushNotificationResponse sendToTokens(List<String> tokens, String title, String body, Map<String, String> data) {
         MulticastMessage.Builder builder = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(Notification.builder()
@@ -142,7 +142,7 @@ public class NotificationService {
                 }
             }
 
-            return new NotificationResponse(response.getSuccessCount(), response.getFailureCount(), messageIds);
+            return new PushNotificationResponse(response.getSuccessCount(), response.getFailureCount(), messageIds);
 
         } catch (FirebaseMessagingException e) {
             log.error("Erro ao enviar push multicast: {}", e.getMessage());

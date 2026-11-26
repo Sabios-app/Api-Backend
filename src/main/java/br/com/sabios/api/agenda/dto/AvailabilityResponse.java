@@ -2,12 +2,13 @@ package br.com.sabios.api.agenda.dto;
 
 import br.com.sabios.api.agenda.domain.Availability;
 
+import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.UUID;
 
 public record AvailabilityResponse(
         UUID id,
-        String dayOfWeek,
+        DayOfWeek dayOfWeek,
         LocalTime startTime,
         LocalTime endTime
 ) {

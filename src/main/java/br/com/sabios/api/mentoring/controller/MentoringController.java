@@ -1,6 +1,10 @@
 package br.com.sabios.api.mentoring.controller;
 
+import br.com.sabios.api.mentoring.domain.MentoringScope;
+import br.com.sabios.api.mentoring.domain.MentoringStatus;
+import br.com.sabios.api.mentoring.dto.AcceptMentoringRequest;
 import br.com.sabios.api.mentoring.dto.CreateMentoringRequest;
+import br.com.sabios.api.mentoring.dto.MeetingLinkRequest;
 import br.com.sabios.api.mentoring.dto.MentoringResponse;
 import br.com.sabios.api.mentoring.service.MentoringService;
 import br.com.sabios.api.users.domain.User;
@@ -38,9 +42,14 @@ public class MentoringController {
     }
 
     @GetMapping
-    @Operation(summary = "Retorna a lista de mentorias do usuário logado (Cliente ou Conselheiro)")
-    public ResponseEntity<List<MentoringResponse>> listMyMentorings(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(mentoringService.listUserMentorings(user));
+    @Operation(summary = "Lista as mentorias do usuário logado (Cliente ou Conselheiro). "
+            + "Filtros opcionais: status e scope (UPCOMING = próximas/pendentes, HISTORY = histórico)")
+    public ResponseEntity<List<MentoringResponse>> listMyMentorings(
+            @AuthenticationPrincipal User user,
+            @RequestParam(required = false) MentoringStatus status,
+            @RequestParam(required = false) MentoringScope scope
+    ) {
+        return ResponseEntity.ok(mentoringService.listUserMentorings(user, status, scope));
     }
 
     @GetMapping("/next")
@@ -50,12 +59,15 @@ public class MentoringController {
     }
 
     @PatchMapping("/{id}/accept")
-    @Operation(summary = "Conselheiro aceita uma mentoria solicitada (altera para CONFIRMED)")
+    @Operation(summary = "Conselheiro aceita uma mentoria solicitada (altera para CONFIRMED). "
+            + "O corpo é opcional e permite informar o link da videochamada")
     public ResponseEntity<MentoringResponse> acceptMentoring(
             @AuthenticationPrincipal User user,
-            @PathVariable UUID id
+            @PathVariable UUID id,
+            @Valid @RequestBody(required = false) AcceptMentoringRequest request
     ) {
-        return ResponseEntity.ok(mentoringService.acceptMentoring(user, id));
+        String meetingLink = request != null ? request.meetingLink() : null;
+        return ResponseEntity.ok(mentoringService.acceptMentoring(user, id, meetingLink));
     }
 
     @PatchMapping("/{id}/reject")
@@ -65,5 +77,33 @@ public class MentoringController {
             @PathVariable UUID id
     ) {
         return ResponseEntity.ok(mentoringService.rejectMentoring(user, id));
+    }
+
+    @PatchMapping("/{id}/cancel")
+    @Operation(summary = "Cliente ou conselheiro cancela uma mentoria REQUESTED ou CONFIRMED futura (altera para CANCELED)")
+    public ResponseEntity<MentoringResponse> cancelMentoring(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID id
+    ) {
+        return ResponseEntity.ok(mentoringService.cancelMentoring(user, id));
+    }
+
+    @PatchMapping("/{id}/complete")
+    @Operation(summary = "Conselheiro marca uma mentoria CONFIRMED, já iniciada, como concluída (altera para COMPLETED)")
+    public ResponseEntity<MentoringResponse> completeMentoring(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID id
+    ) {
+        return ResponseEntity.ok(mentoringService.completeMentoring(user, id));
+    }
+
+    @PatchMapping("/{id}/meeting-link")
+    @Operation(summary = "Conselheiro informa ou altera o link da videochamada de uma mentoria CONFIRMED")
+    public ResponseEntity<MentoringResponse> updateMeetingLink(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID id,
+            @Valid @RequestBody MeetingLinkRequest request
+    ) {
+        return ResponseEntity.ok(mentoringService.updateMeetingLink(user, id, request.meetingLink()));
     }
 }

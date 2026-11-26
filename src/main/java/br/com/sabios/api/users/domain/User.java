@@ -40,6 +40,10 @@ public class User {
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
+    /** Tokens JWT emitidos antes deste instante são rejeitados (troca/redefinição de senha). */
+    @Column(name = "password_changed_at")
+    private OffsetDateTime passwordChangedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

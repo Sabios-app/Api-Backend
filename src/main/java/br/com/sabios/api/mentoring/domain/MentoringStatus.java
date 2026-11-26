@@ -5,5 +5,7 @@ public enum MentoringStatus {
     REQUESTED,
     COMPLETED,
     REJECTED,
-    CANCELED
+    CANCELED,
+    /** Solicitação que ninguém respondeu até o horário agendado (definido automaticamente). */
+    EXPIRED
 }

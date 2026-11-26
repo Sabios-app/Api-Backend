@@ -4,10 +4,13 @@ import br.com.sabios.api.agenda.domain.Availability;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.DayOfWeek;
 import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface AvailabilityRepository extends JpaRepository<Availability, UUID> {
     List<Availability> findBySpecialistIdOrderByStartTimeAsc(UUID specialistId);
+
+    List<Availability> findBySpecialistIdAndDayOfWeek(UUID specialistId, DayOfWeek dayOfWeek);
 }

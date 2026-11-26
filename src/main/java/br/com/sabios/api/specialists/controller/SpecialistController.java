@@ -1,6 +1,7 @@
 package br.com.sabios.api.specialists.controller;
 
 import br.com.sabios.api.specialists.dto.CreateSpecialistRequest;
+import br.com.sabios.api.specialists.dto.SpecialistFilter;
 import br.com.sabios.api.specialists.dto.SpecialistResponse;
 import br.com.sabios.api.specialists.dto.UpdateSpecialistRequest;
 import br.com.sabios.api.specialists.service.SpecialistService;
@@ -19,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.util.UUID;
 
 @RestController
@@ -33,13 +36,18 @@ public class SpecialistController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista especialistas disponíveis com busca, filtros e paginação")
+    @Operation(summary = "Lista especialistas disponíveis com busca, filtros (especialidade, nota mínima, faixa de preço, dia da semana atendido) e paginação. Ordenação: sort=rating,desc | hourlyRate,asc | user.name,asc")
     public ResponseEntity<Page<SpecialistResponse>> list(
             @RequestParam(required = false) String specialty,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) BigDecimal minRating,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) DayOfWeek availableDay,
             @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return ResponseEntity.ok(specialistService.listSpecialists(specialty, search, pageable));
+        return ResponseEntity.ok(specialistService.listSpecialists(
+                new SpecialistFilter(specialty, search, minRating, minPrice, maxPrice, availableDay), pageable));
     }
 
     @GetMapping("/{id}")

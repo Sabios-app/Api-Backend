@@ -3,6 +3,8 @@ package br.com.sabios.api.auth.service;
 import br.com.sabios.api.auth.dto.AuthResponse;
 import br.com.sabios.api.auth.dto.LoginRequest;
 import br.com.sabios.api.auth.dto.RegisterRequest;
+import br.com.sabios.api.shared.exception.BadRequestException;
+import br.com.sabios.api.users.domain.Role;
 import br.com.sabios.api.users.domain.User;
 import br.com.sabios.api.users.dto.UserResponse;
 import br.com.sabios.api.users.repository.UserRepository;
@@ -17,15 +19,22 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final AuthRateLimiter rateLimiter;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, TokenService tokenService) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                       TokenService tokenService, AuthRateLimiter rateLimiter) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
+        this.rateLimiter = rateLimiter;
     }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        if (request.role() == Role.ADMIN) {
+            throw new BadRequestException("Não é possível se cadastrar com o perfil ADMIN.");
+        }
+
         if (userRepository.existsByEmail(request.email())) {
             throw new IllegalArgumentException("Já existe um usuário cadastrado com este e-mail.");
         }
@@ -51,13 +60,16 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new BadCredentialsException("E-mail ou senha inválidos."));
+    public AuthResponse login(LoginRequest request, String clientIp) {
+        rateLimiter.checkLogin(request.email(), clientIp);
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        User user = userRepository.findByEmail(request.email()).orElse(null);
+        // A mesma mensagem para e-mail inexistente e senha errada evita revelar quais e-mails existem.
+        if (user == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            rateLimiter.recordLoginFailure(request.email(), clientIp);
             throw new BadCredentialsException("E-mail ou senha inválidos.");
         }
+        rateLimiter.recordLoginSuccess(request.email());
 
         String token = tokenService.generateToken(user);
 

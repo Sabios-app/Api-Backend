@@ -14,9 +14,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -37,11 +37,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            Optional<UUID> userIdOpt = tokenService.validateTokenAndGetUserId(token);
+            Optional<TokenService.TokenData> tokenData = tokenService.parse(token);
 
-            if (userIdOpt.isPresent()) {
-                Optional<User> userOpt = userRepository.findById(userIdOpt.get());
-                if (userOpt.isPresent()) {
+            if (tokenData.isPresent()) {
+                Optional<User> userOpt = userRepository.findById(tokenData.get().userId());
+                if (userOpt.isPresent() && !isIssuedBeforePasswordChange(tokenData.get(), userOpt.get())) {
                     User user = userOpt.get();
                     var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
                     var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
@@ -51,5 +51,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /** O "iat" do JWT tem precisão de segundos, então a comparação também é feita em segundos. */
+    private boolean isIssuedBeforePasswordChange(TokenService.TokenData token, User user) {
+        return user.getPasswordChangedAt() != null
+                && token.issuedAt().isBefore(user.getPasswordChangedAt().toInstant().truncatedTo(ChronoUnit.SECONDS));
     }
 }

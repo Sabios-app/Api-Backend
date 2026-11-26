@@ -8,11 +8,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,6 +34,16 @@ public class AgendaController {
     @Operation(summary = "Lista pública de horários disponíveis de um especialista")
     public ResponseEntity<List<AvailabilityResponse>> getSpecialistAvailability(@PathVariable UUID specialistId) {
         return ResponseEntity.ok(agendaService.getSpecialistAvailability(specialistId));
+    }
+
+    @GetMapping("/specialists/{specialistId}/slots")
+    @Operation(summary = "Lista pública dos horários livres (datas e horas) de um especialista em um período de até 31 dias")
+    public ResponseEntity<List<OffsetDateTime>> getFreeSlots(
+            @PathVariable UUID specialistId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return ResponseEntity.ok(agendaService.getFreeSlots(specialistId, from, to));
     }
 
     @GetMapping("/me")

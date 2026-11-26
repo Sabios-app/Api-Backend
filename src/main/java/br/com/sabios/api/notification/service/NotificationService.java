@@ -1,0 +1,177 @@
+package br.com.sabios.api.notification.service;
+
+import br.com.sabios.api.notification.dto.BroadcastNotificationRequest;
+import br.com.sabios.api.notification.dto.NotificationResponse;
+import br.com.sabios.api.notification.dto.SendNotificationRequest;
+import com.google.firebase.messaging.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@Service
+public class NotificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+
+    private final DeviceTokenService deviceTokenService;
+
+    public NotificationService(DeviceTokenService deviceTokenService) {
+        this.deviceTokenService = deviceTokenService;
+    }
+
+    /**
+     * Envia push notification para todos os dispositivos ativos de um usuário.
+     */
+    public NotificationResponse sendToUser(SendNotificationRequest request) {
+        List<String> tokens = deviceTokenService.getActiveTokensByUserId(request.userId());
+
+        if (tokens.isEmpty()) {
+            log.warn("Nenhum token FCM ativo encontrado para o usuário {}", request.userId());
+            return new NotificationResponse(0, 0, List.of());
+        }
+
+        return sendToTokens(tokens, request.title(), request.body(), request.data());
+    }
+
+    /**
+     * Envia push notification em massa (broadcast) para todos os dispositivos ativos da base.
+     * Divide automaticamente em lotes de até 500 tokens (limite da API Multicast do FCM).
+     */
+    public NotificationResponse sendBroadcast(BroadcastNotificationRequest request) {
+        List<String> tokens = deviceTokenService.getAllActiveTokens();
+
+        if (tokens.isEmpty()) {
+            log.warn("[FCM] Nenhum token ativo encontrado para envio em massa.");
+            return new NotificationResponse(0, 0, List.of());
+        }
+
+        log.info("[FCM] Iniciando envio em massa para {} dispositivo(s) ativos.", tokens.size());
+
+        int totalSuccess = 0;
+        int totalFailure = 0;
+        List<String> allMessageIds = new ArrayList<>();
+
+        // Limite da API FCM sendEachForMulticast é 500 tokens por requisição
+        int batchSize = 500;
+        for (int i = 0; i < tokens.size(); i += batchSize) {
+            List<String> batch = tokens.subList(i, Math.min(i + batchSize, tokens.size()));
+            NotificationResponse batchResponse = sendToTokens(batch, request.title(), request.body(), request.data());
+            totalSuccess += batchResponse.successCount();
+            totalFailure += batchResponse.failureCount();
+            allMessageIds.addAll(batchResponse.messageIds());
+        }
+
+        log.info("[FCM] Broadcast finalizado. Total de sucessos: {}, falhas: {}", totalSuccess, totalFailure);
+        return new NotificationResponse(totalSuccess, totalFailure, allMessageIds);
+    }
+
+    /**
+     * Envia push notification para um único token (uso interno).
+     */
+    public String sendToToken(String token, String title, String body, Map<String, String> data) {
+        Message.Builder builder = Message.builder()
+                .setToken(token)
+                .setNotification(Notification.builder()
+                        .setTitle(title)
+                        .setBody(body)
+                        .build())
+                .putData("click_action", "FLUTTER_NOTIFICATION_CLICK");
+
+        if (data != null) {
+            builder.putAllData(data);
+        }
+
+        try {
+            String response = FirebaseMessaging.getInstance().send(builder.build());
+            log.info("Push enviado com sucesso: {}", response);
+            return response;
+        } catch (FirebaseMessagingException e) {
+            log.error("Erro ao enviar push para token {}: {}", token, e.getMessage());
+
+            // Se o token não é mais válido, desativa
+            if (e.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
+                deviceTokenService.deactivateToken(token);
+                log.info("Token inválido desativado: {}", token);
+            }
+            throw new RuntimeException("Falha ao enviar notificação: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Envia push notification para múltiplos tokens (multicast).
+     */
+    public NotificationResponse sendToTokens(List<String> tokens, String title, String body, Map<String, String> data) {
+        MulticastMessage.Builder builder = MulticastMessage.builder()
+                .addAllTokens(tokens)
+                .setNotification(Notification.builder()
+                        .setTitle(title)
+                        .setBody(body)
+                        .build())
+                .putData("click_action", "FLUTTER_NOTIFICATION_CLICK");
+
+        if (data != null) {
+            builder.putAllData(data);
+        }
+
+        try {
+            BatchResponse response = FirebaseMessaging.getInstance().sendEachForMulticast(builder.build());
+            log.info("Push multicast: {} sucesso, {} falhas",
+                    response.getSuccessCount(), response.getFailureCount());
+
+            List<String> messageIds = new ArrayList<>();
+            List<SendResponse> responses = response.getResponses();
+
+            for (int i = 0; i < responses.size(); i++) {
+                SendResponse sendResponse = responses.get(i);
+                if (sendResponse.isSuccessful()) {
+                    messageIds.add(sendResponse.getMessageId());
+                } else {
+                    FirebaseMessagingException ex = sendResponse.getException();
+                    log.error("Falha no token [{}]: {}", tokens.get(i),
+                            ex != null ? ex.getMessage() : "desconhecido");
+
+                    // Desativa tokens inválidos
+                    if (ex != null && ex.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
+                        deviceTokenService.deactivateToken(tokens.get(i));
+                    }
+                }
+            }
+
+            return new NotificationResponse(response.getSuccessCount(), response.getFailureCount(), messageIds);
+
+        } catch (FirebaseMessagingException e) {
+            log.error("Erro ao enviar push multicast: {}", e.getMessage());
+            throw new RuntimeException("Falha ao enviar notificações: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Envia notificação para um tópico (ex: "news", "promotions").
+     */
+    public String sendToTopic(String topic, String title, String body, Map<String, String> data) {
+        Message.Builder builder = Message.builder()
+                .setTopic(topic)
+                .setNotification(Notification.builder()
+                        .setTitle(title)
+                        .setBody(body)
+                        .build());
+
+        if (data != null) {
+            builder.putAllData(data);
+        }
+
+        try {
+            String response = FirebaseMessaging.getInstance().send(builder.build());
+            log.info("Push enviado ao tópico '{}': {}", topic, response);
+            return response;
+        } catch (FirebaseMessagingException e) {
+            log.error("Erro ao enviar push ao tópico '{}': {}", topic, e.getMessage());
+            throw new RuntimeException("Falha ao enviar notificação ao tópico: " + e.getMessage(), e);
+        }
+    }
+}

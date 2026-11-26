@@ -91,12 +91,9 @@ Este documento registra o progresso, configurações e funcionalidades implement
 
 ---
 
-## 🌱 Migração e Carga de Dados Inicial (`seed`)
-- **Script `V2__seed_initial_data.sql`**:
-  - Inserção dos especialistas reais do protótipo: **Helena Martins** (Finanças), **Carlos Almeida** (Vendas), **Roberto Salles** (Liderança).
-  - Inserção do cliente padrão **Marcos Ribeiro** (Padaria Central).
-  - Inserção das tarefas reais do plano de ação e da próxima sessão agendada com link do Google Meet.
-  - Senha padrão de teste com hash BCrypt para todos: `senha123`.
+## 🗄️ Migração do Banco de Dados (`Flyway`)
+- **`V1__create_initial_schema.sql`**: Tabelas fundamentais (`users`, `specialists`, `mentorings`) com UUIDs nativos e índices.
+- **`V2__update_mentorings_and_create_action_plans.sql`**: Adiciona suporte a link de chamada (`meeting_link`) e dúvidas (`doubts`) em `mentorings`, além da criação da tabela `action_plans`. Banco de dados limpo, sem inserções fictícias em migrações DDL.
 
 ---
 

@@ -66,7 +66,40 @@ Este documento registra o progresso, configurações e funcionalidades implement
 
 ---
 
+## 🤝 Módulo de Mentorias (`mentorings`)
+
+### 1. Modelo de Domínio e Status
+- **Status das Mentorias (`MentoringStatus`)**: `CONFIRMED`, `REQUESTED`, `COMPLETED`, `REJECTED`, `CANCELED`.
+- **Entidade `Mentoring`**: Vinculada com `User` (cliente) e `Specialist` (conselheiro), com `title`, `description`, `doubts`, `scheduledAt`, `meetingLink` (Google Meet) e timestamps.
+
+### 2. Endpoints Implementados
+- `POST /api/v1/mentorings`: Cliente solicita mentoria (status inicial `REQUESTED`).
+- `GET /api/v1/mentorings`: Lista as mentorias/solicitações do usuário logado (cliente ou conselheiro).
+- `GET /api/v1/mentorings/next`: Retorna a próxima mentoria futura confirmada com o link de conferência virtual.
+- `PATCH /api/v1/mentorings/{id}/accept`: Conselheiro indicado aceita a solicitação (`CONFIRMED`).
+- `PATCH /api/v1/mentorings/{id}/reject`: Conselheiro indicado recusa a solicitação (`REJECTED`).
+
+---
+
+## 📋 Módulo de Planos de Ação (`action-plans`)
+
+### 1. Modelo e Endpoints
+- **Entidade `ActionPlan`**: Tarefas e metas vinculadas ao cliente (`client_id`, `title`, `deadline`, `conselheiroNome`, `completed`).
+- `GET /api/v1/action-plans`: Lista tarefas do cliente autenticado ordenadas por data.
+- `POST /api/v1/action-plans`: Cria nova meta vinculada ao cliente.
+- `PATCH /api/v1/action-plans/{id}/toggle`: Alterna status entre concluído e pendente, validando posse do usuário.
+
+---
+
+## 🌱 Migração e Carga de Dados Inicial (`seed`)
+- **Script `V2__seed_initial_data.sql`**:
+  - Inserção dos especialistas reais do protótipo: **Helena Martins** (Finanças), **Carlos Almeida** (Vendas), **Roberto Salles** (Liderança).
+  - Inserção do cliente padrão **Marcos Ribeiro** (Padaria Central).
+  - Inserção das tarefas reais do plano de ação e da próxima sessão agendada com link do Google Meet.
+  - Senha padrão de teste com hash BCrypt para todos: `senha123`.
+
+---
+
 ## 📋 Próximos Passos
-- [ ] **Módulo `agenda`**: Tabela de disponibilidades e horários livres dos conselheiros.
-- [ ] **Módulo `mentorings`**: Solicitação, aceite e recusa de mentorias.
-- [ ] **Seed de Dados**: Migração `V2__seed_initial_data.sql` com conselheiros e dados de teste para consumo do Frontend e Mobile.
+- [ ] **Módulo `messages`**: Conversas e chat em tempo real entre cliente e conselheiro.
+- [ ] **Módulo `reviews`**: Avaliações pós-mentoria com cálculo automático de média.

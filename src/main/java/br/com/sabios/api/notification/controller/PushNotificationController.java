@@ -1,9 +1,9 @@
 package br.com.sabios.api.notification.controller;
 
 import br.com.sabios.api.notification.dto.BroadcastNotificationRequest;
-import br.com.sabios.api.notification.dto.NotificationResponse;
-import br.com.sabios.api.notification.dto.SendNotificationRequest;
-import br.com.sabios.api.notification.service.NotificationService;
+import br.com.sabios.api.notification.dto.PushNotificationResponse;
+import br.com.sabios.api.notification.dto.SendPushNotificationRequest;
+import br.com.sabios.api.notification.service.PushNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,34 +15,34 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/notifications")
+@RequestMapping("/api/v1/push-notifications")
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Notificações", description = "Envio de push notifications via Firebase Cloud Messaging")
-public class NotificationController {
+@Tag(name = "Push Notifications", description = "Envio de push notifications via Firebase Cloud Messaging")
+public class PushNotificationController {
 
-    private final NotificationService notificationService;
+    private final PushNotificationService pushNotificationService;
 
-    public NotificationController(NotificationService notificationService) {
-        this.notificationService = notificationService;
+    public PushNotificationController(PushNotificationService pushNotificationService) {
+        this.pushNotificationService = pushNotificationService;
     }
 
     @PostMapping("/send")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Envia push notification para um usuário específico (somente ADMIN)")
-    public ResponseEntity<NotificationResponse> sendToUser(
-            @Valid @RequestBody SendNotificationRequest request
+    public ResponseEntity<PushNotificationResponse> sendToUser(
+            @Valid @RequestBody SendPushNotificationRequest request
     ) {
-        NotificationResponse response = notificationService.sendToUser(request);
+        PushNotificationResponse response = pushNotificationService.sendToUser(request);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/send/broadcast")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Envia push notification para TODOS os dispositivos cadastrados no sistema (somente ADMIN)")
-    public ResponseEntity<NotificationResponse> sendBroadcast(
+    public ResponseEntity<PushNotificationResponse> sendBroadcast(
             @Valid @RequestBody BroadcastNotificationRequest request
     ) {
-        NotificationResponse response = notificationService.sendBroadcast(request);
+        PushNotificationResponse response = pushNotificationService.sendBroadcast(request);
         return ResponseEntity.ok(response);
     }
 
@@ -54,7 +54,7 @@ public class NotificationController {
             @RequestParam String title,
             @RequestParam String body
     ) {
-        String messageId = notificationService.sendToTopic(topic, title, body, null);
+        String messageId = pushNotificationService.sendToTopic(topic, title, body, null);
         return ResponseEntity.ok(Map.of("messageId", messageId));
     }
 }

@@ -103,51 +103,55 @@ public class PushNotificationService {
     }
 
     /**
-     * Envia push notification para múltiplos tokens (multicast).
+     * Envia push notification para múltiplos tokens.
+     * Quando houver apenas 1 token, utiliza diretamente FirebaseMessaging.getInstance().send(message),
+     * evitando o bug conhecido de descompressão GZIP da API em lote (sendEachForMulticast).
      */
     public PushNotificationResponse sendToTokens(List<String> tokens, String title, String body, Map<String, String> data) {
-        MulticastMessage.Builder builder = MulticastMessage.builder()
-                .addAllTokens(tokens)
-                .setNotification(Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build())
-                .putData("click_action", "FLUTTER_NOTIFICATION_CLICK");
-
-        if (data != null) {
-            builder.putAllData(data);
+        if (tokens.isEmpty()) {
+            return new PushNotificationResponse(0, 0, List.of());
         }
 
-        try {
-            BatchResponse response = FirebaseMessaging.getInstance().sendEachForMulticast(builder.build());
-            log.info("Push multicast: {} sucesso, {} falhas",
-                    response.getSuccessCount(), response.getFailureCount());
+        List<String> messageIds = new ArrayList<>();
+        int successCount = 0;
+        int failureCount = 0;
 
-            List<String> messageIds = new ArrayList<>();
-            List<SendResponse> responses = response.getResponses();
+        // Se for um ou poucos tokens, usa send individual direto (evita o problema do GZIP e multicast do HTTP v1)
+        for (String token : tokens) {
+            try {
+                Message.Builder builder = Message.builder()
+                        .setToken(token)
+                        .setNotification(Notification.builder()
+                                .setTitle(title)
+                                .setBody(body)
+                                .build())
+                        .putData("click_action", "FLUTTER_NOTIFICATION_CLICK");
 
-            for (int i = 0; i < responses.size(); i++) {
-                SendResponse sendResponse = responses.get(i);
-                if (sendResponse.isSuccessful()) {
-                    messageIds.add(sendResponse.getMessageId());
-                } else {
-                    FirebaseMessagingException ex = sendResponse.getException();
-                    log.error("Falha no token [{}]: {}", tokens.get(i),
-                            ex != null ? ex.getMessage() : "desconhecido");
-
-                    // Desativa tokens inválidos
-                    if (ex != null && ex.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
-                        deviceTokenService.deactivateToken(tokens.get(i));
-                    }
+                if (data != null) {
+                    builder.putAllData(data);
                 }
+
+                String messageId = FirebaseMessaging.getInstance().send(builder.build());
+                messageIds.add(messageId);
+                successCount++;
+                log.info("[FCM] Push enviado com sucesso para o token [{}...]: ID {}", 
+                        token.substring(0, Math.min(token.length(), 15)), messageId);
+            } catch (FirebaseMessagingException ex) {
+                failureCount++;
+                log.error("[FCM] Falha ao enviar para o token [{}...]: {}", 
+                        token.substring(0, Math.min(token.length(), 15)), ex.getMessage());
+
+                if (ex.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
+                    deviceTokenService.deactivateToken(token);
+                    log.info("[FCM] Token desativado por estar inválido/desregistrado: {}", token);
+                }
+            } catch (Exception ex) {
+                failureCount++;
+                log.error("[FCM] Erro inesperado ao enviar push: {}", ex.getMessage());
             }
-
-            return new PushNotificationResponse(response.getSuccessCount(), response.getFailureCount(), messageIds);
-
-        } catch (FirebaseMessagingException e) {
-            log.error("Erro ao enviar push multicast: {}", e.getMessage());
-            throw new RuntimeException("Falha ao enviar notificações: " + e.getMessage(), e);
         }
+
+        return new PushNotificationResponse(successCount, failureCount, messageIds);
     }
 
     /**

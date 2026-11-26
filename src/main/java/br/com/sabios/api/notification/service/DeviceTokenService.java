@@ -64,12 +64,19 @@ public class DeviceTokenService {
 
     /**
      * Remove (desativa) um token FCM — ex: quando o usuário faz logout.
+     * Se o usuário for informado, garante que só desativa se o token pertencer a ele.
      */
     @Transactional
-    public void deactivateToken(String fcmToken) {
-        log.info("[FCM] Tentando desativar token FCM: {}", fcmToken);
+    public void deactivateToken(String fcmToken, User user) {
+        log.info("[FCM] Tentando desativar token FCM: {} para usuário: {}", 
+                fcmToken, user != null ? user.getId() : "sistema/anônimo");
         deviceTokenRepository.findByFcmToken(fcmToken)
                 .ifPresentOrElse(token -> {
+                    if (user != null && !token.getUser().getId().equals(user.getId())) {
+                        log.warn("[FCM] Tentativa de desativação rejeitada: token pertence a outro usuário (Dono: {}, Solicitante: {})",
+                                token.getUser().getId(), user.getId());
+                        return;
+                    }
                     token.setActive(false);
                     deviceTokenRepository.save(token);
                     log.info("[FCM] Token FCM ID: {} (UserID: {}) foi desativado com sucesso.", 
@@ -77,6 +84,27 @@ public class DeviceTokenService {
                 }, () -> {
                     log.warn("[FCM] Token FCM não encontrado no banco para desativação: {}", fcmToken);
                 });
+    }
+
+    /**
+     * Sobrecarga para uso interno do sistema (ex: FCM reportou token inválido/desregistrado).
+     */
+    @Transactional
+    public void deactivateToken(String fcmToken) {
+        deactivateToken(fcmToken, null);
+    }
+
+    /**
+     * Desativa todos os tokens do usuário (ex: logout de todas as sessões ou exclusão de conta).
+     */
+    @Transactional
+    public void deactivateAllUserTokens(User user) {
+        List<DeviceToken> tokens = deviceTokenRepository.findByUserIdAndActiveTrue(user.getId());
+        for (DeviceToken token : tokens) {
+            token.setActive(false);
+        }
+        deviceTokenRepository.saveAll(tokens);
+        log.info("[FCM] Desativados todos os {} token(s) do usuário ID: {}", tokens.size(), user.getId());
     }
 
     /**

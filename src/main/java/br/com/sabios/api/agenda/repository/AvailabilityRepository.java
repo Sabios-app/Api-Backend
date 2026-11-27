@@ -13,4 +13,6 @@ public interface AvailabilityRepository extends JpaRepository<Availability, UUID
     List<Availability> findBySpecialistIdOrderByStartTimeAsc(UUID specialistId);
 
     List<Availability> findBySpecialistIdAndDayOfWeek(UUID specialistId, DayOfWeek dayOfWeek);
+
+    boolean existsBySpecialistId(UUID specialistId);
 }

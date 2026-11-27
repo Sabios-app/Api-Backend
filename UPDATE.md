@@ -4,49 +4,8 @@ Este documento registra o progresso, configurações e funcionalidades implement
 
 ---
 
-<<<<<<< HEAD
-## 2026-11-25 - Push Notifications via FCM e Admin Seeder
-
-- **Adicionado:** Envio de notificações push mobile via Firebase Cloud Messaging (`/api/v1/push-notifications/send`, `/api/v1/push-notifications/send/broadcast` e `/api/v1/push-notifications/send/topic`).
-- **Adicionado:** Registro e desativação de tokens de dispositivos FCM (`/api/v1/devices/token`).
-- **Adicionado:** `AdminSeeder` para criação automática do usuário administrador padrão (`admin@sabios.com.br`) na inicialização da aplicação.
-- **Banco de dados:** Migração `V7__create_device_tokens.sql` (tabela `device_tokens` com índices e status ativo).
-- **Segurança:** Suporte a credenciais Firebase locais e via env var JSON inline (`FIREBASE_CREDENTIALS_JSON`).
-
-## 2026-11-25 - Privacidade dos dados do conselheiro
-
-- **Corrigido (segurança):** `GET /specialists`, `GET /specialists/{id}` e os objetos `specialist` de mentorias e conversas deixaram de expor e-mail, telefone e perfil do conselheiro. O campo `user` agora traz apenas `{ id, name, avatarUrl }`.
-- **Impacto:** Web/Mobile não devem ler `specialist.user.email`, `specialist.user.phone` nem `specialist.user.role`. Os dados completos do próprio usuário continuam em `GET /users/me` e na resposta de login.
-
-## 2026-11-25 - Plano de ação completo e avaliações dos conselheiros
-
-- **Adicionado (plano de ação):** tarefa ligada à mentoria e ao conselheiro; o conselheiro atribui tarefas ao cliente (`POST /action-plans/mentorings/{id}`) e o cliente é notificado; prazo estruturado `dueDate`; editar (`PATCH /action-plans/{id}`) e remover (`DELETE`); histórico (`?completed=true`), vencidas (`?overdue=true`) e por mentoria (`GET /action-plans/mentorings/{id}`); momento da conclusão (`completedAt`).
-- **Adicionado (avaliações):** resumo com média e distribuição (`GET /reviews/specialists/{id}/summary`); editar e remover a própria avaliação; `GET /reviews/me`; `GET /reviews/pending` (mentorias concluídas ainda sem avaliação); notificação `REVIEW_RECEIVED` ao conselheiro.
-- **Corrigido:** `POST /reviews` agora exige mentoria **concluída** (antes aceitava qualquer status); a lista pública de avaliações não expõe mais e-mail, telefone nem perfil do cliente.
-- **Alterado:** `ActionPlanResponse` ganhou campos (`mentoringId`, `specialistId`, `dueDate`, `completedAt`, `overdue`, `assignedByCounselor`); os antigos continuam iguais. O `client` das avaliações passou a ser `{ name, avatarUrl }`. A lista de avaliações aceita `page` e `size` (máx. 50, padrão 50).
-- **Banco de dados:** migração `V6` (colunas novas em `action_plans` e `reviews.updated_at`).
-- **Impacto:** Web/Mobile não devem mais ler `client.email`, `client.phone`, `client.role` nem `client.id` das avaliações. Novos tipos de notificação: `ACTION_PLAN_ASSIGNED` e `REVIEW_RECEIVED`.
-
-## 2026-11-25 - MVP de agendamento, recuperação de senha, notificações e segurança
-
-- **Adicionado:** recuperação de senha (`/auth/forgot-password`, `/auth/reset-password`); filtros de busca (nota, preço, dia atendido); horários livres (`/agenda/specialists/{id}/slots`); cancelar, concluir e informar link das mentorias; histórico (`?scope=`); notificações (`/notifications`); expiração automática de solicitações vencidas (`EXPIRED`); rate limit no login e na recuperação de senha.
-- **Alterado:** `dayOfWeek` da agenda agora é `MONDAY..SUNDAY`; a solicitação de mentoria valida disponibilidade e conflitos; `meetingLink` vem `null` até o conselheiro informar um link real; sem token a API responde `401` (antes `403`).
-- **Segurança:** `register` recusa `role: ADMIN`; redefinir a senha invalida os JWT antigos.
-- **Banco de dados:** migrações `V4` e `V5`.
-- **Impacto:** Web/Mobile devem usar `dayOfWeek` em inglês, tratar `401`, `429` e o status `EXPIRED`, e o Web precisa da tela `/redefinir-senha?token=`. Detalhes na seção "MVP" abaixo.
-- **Documentação:** `update.md` e `UPDATE.md` eram arquivos distintos no git (colidem no Windows); unificados neste arquivo.
-
-## 2026-11-23 - Padronização do registro de mudanças
-
-- **Adicionado:** criado este arquivo para centralizar as atualizações do backend.
-- **Documentação:** inclusão de um acesso direto às atualizações na página inicial do README.
-
----
-
 # Estado atual por módulo
 
-=======
->>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc
 ## 🚀 Versão Inicial e Infraestrutura
 
 ### 1. Compatibilização e Build
@@ -57,7 +16,7 @@ Este documento registra o progresso, configurações e funcionalidades implement
 
 ### 2. Integração e Documentação
 - **CORS Configurado**: Configurado `CorsConfig` liberando origens do React Web (`http://localhost:5173`) e aplicações locais, com suporte a headers de autorização e métodos REST (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`).
-- **OpenAPI / Swagger UI**: Configurado Springdoc OpenAPI (`OpenApiConfig`) com esquema de autenticação JWT Bearer. Documentação visual interativa disponível em:
+- **OpenAPI / Swagger UI**: Configurado Springdoc OpenAPI (`OpenApiConfig`) com esquema de autenticação JWT Bearer. Documentação visual interativa disponível em `/swagger-ui.html`.
   - `/swagger-ui/index.html`
   - `/v3/api-docs`
 - **Flyway Migrations**: Adicionado `V1__create_initial_schema.sql` para criação automática das tabelas essenciais (`users`, `specialists`, `mentorings`) utilizando UUIDs (`pgcrypto`), chaves estrangeiras e índices otimizados.
@@ -107,7 +66,6 @@ Este documento registra o progresso, configurações e funcionalidades implement
 - `POST /api/v1/specialists/me`: Cadastro do perfil profissional do conselheiro autenticado.
 - `PATCH /api/v1/specialists/me`: Atualização de informações de perfil do conselheiro autenticado.
 
-<<<<<<< HEAD
 ---
 
 ## 🤝 Módulo de Mentorias (`mentorings`)
@@ -178,7 +136,8 @@ Este documento registra o progresso, configurações e funcionalidades implement
 ---
 
 ## 📱 Notificações Push Mobile via FCM (`notification`)
-- **Infraestrutura**: Google Firebase Admin SDK para envio de push notifications.
+- **Infraestrutura**: Google Firebase Admin SDK para envio de push notifications (`firebase-admin` 9.4.3).
+- **Configuração (`FirebaseConfig`)**: Suporte a carregamento de credenciais via arquivo JSON local (`firebase-service-account.json`) ou via variável de ambiente `FIREBASE_CREDENTIALS_JSON` (JSON inline para produção/nuvem).
 - **Gestão de Dispositivos (`/api/v1/devices`)**:
   - `POST /api/v1/devices/token`: registra ou atualiza o token FCM do dispositivo.
   - `DELETE /api/v1/devices/token`: desativa o token FCM (logout).
@@ -187,47 +146,11 @@ Este documento registra o progresso, configurações e funcionalidades implement
   - `POST /api/v1/push-notifications/send`: envio direto para os dispositivos de um usuário específico (`ADMIN`).
   - `POST /api/v1/push-notifications/send/broadcast`: envio em massa para todos os dispositivos ativos, com batching de até 500 tokens (`ADMIN`).
   - `POST /api/v1/push-notifications/send/topic`: envio para tópicos de inscrição (`ADMIN`).
-=======
-
----
-
-## 🔔 Módulo de Notificações e Push (`notification`)
-
-### 1. Infraestrutura e Firebase Admin SDK
-- **Dependência**: Adicionado `firebase-admin` (v9.4.3) ao `pom.xml`.
-- **Configuração (`FirebaseConfig`)**: Suporte a carregamento de credenciais via arquivo JSON local (`src/main/resources/firebase-service-account.json`) ou via variável de ambiente `FIREBASE_CREDENTIALS_JSON` (JSON inline para ambiente de nuvem/produção).
-- **Segurança de Métodos**: Habilitado `@EnableMethodSecurity` no `SecurityConfig` para proteger endpoints restritos a administradores com `@PreAuthorize("hasRole('ADMIN')")`.
-
-### 2. Modelo de Domínio e Banco de Dados
-- **Migration Flyway (`V2__create_device_tokens.sql`)**: Criação da tabela `device_tokens` com suporte a múltiplos dispositivos por usuário, status de ativação (`active`) e índices otimizados para busca por `fcm_token` e `user_id`.
-- **Entidade `DeviceToken`**: Mapeada com JPA contendo relacionamento `@ManyToOne` com `User`, campos `device_info`, `fcm_token` e timestamps de auditoria.
-- **Repositório `DeviceTokenRepository`**: Métodos para consulta por token, tokens ativos por usuário e todos os tokens ativos do sistema.
-
-### 3. Regras de Negócio e Serviços
-- **Gestão de Tokens (`DeviceTokenService`)**:
-  - Registro e atualização de tokens FCM vinculados ao usuário autenticado (reatribui automaticamente caso o dispositivo mude de usuário).
-  - Desativação de tokens sob demanda (ex: logout).
-  - Consulta de tokens ativos com logs detalhados de auditoria.
-- **Disparo de Notificações (`NotificationService`)**:
-  - Envio individual para os aparelhos de um usuário específico (`sendToUser`).
-  - Envio em massa/broadcast (`sendBroadcast`): particionamento automático em lotes de até 500 tokens (respeitando os limites do Firebase Multicast API).
-  - Envio para tópicos do Firebase (`sendToTopic`).
-  - Limpeza automática: desativação transparente de tokens expirados/desinstalados quando o Firebase reporta erro `UNREGISTERED`.
-
-### 4. Endpoints Disponíveis
-- `POST /api/v1/devices/token`: Registra ou atualiza o token FCM do dispositivo do usuário logado.
-- `DELETE /api/v1/devices/token`: Desativa o token FCM especificado (logout).
-- `GET /api/v1/devices/me`: Lista os dispositivos ativos registrados do usuário logado.
-- `POST /api/v1/notifications/send`: Disparo de notificação para um usuário específico (restrito a `ADMIN`).
-- `POST /api/v1/notifications/send/broadcast`: Disparo em massa para todos os dispositivos ativos (restrito a `ADMIN`).
-- `POST /api/v1/notifications/send/topic`: Disparo para tópicos de inscrição (restrito a `ADMIN`).
->>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc
 
 ---
 
 ## 🛠️ Seeds e Cargas Iniciais
 - **`AdminSeeder` (`CommandLineRunner`)**: Criação automática do usuário administrador padrão (`admin@sabios.com.br` com role `ADMIN`) na inicialização da aplicação, caso ainda não exista no banco de dados.
-<<<<<<< HEAD
 
 ---
 
@@ -239,18 +162,10 @@ Este documento registra o progresso, configurações e funcionalidades implement
 - **`V5__notifications_and_security_hardening.sql`**: Notificações in-app e invalidação de JWT (`password_changed_at`).
 - **`V6__action_plan_links_and_review_updates.sql`**: Vínculos de planos de ação e atualizações em avaliações.
 - **`V7__create_device_tokens.sql`**: Armazenamento de tokens FCM de dispositivos (`device_tokens`).
-=======
->>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc
 
 ---
 
 ## 📋 Próximos Passos
-<<<<<<< HEAD
 - [x] Conectar os serviços de API do Frontend React (`axios`) apontando para `http://localhost:8080/api/v1` (Autenticação, Especialistas, Mentorias, Planos de Ação).
 - [x] Conectar os serviços de API do Mobile Flutter (`http` e `shared_preferences`) apontando para o backend com suporte a emulador e web.
 - [x] Validar a execução conjunta dos serviços (Backend Spring Boot + Web Frontend Vite + PostgreSQL).
-=======
-- [ ] **Módulo `agenda`**: Tabela de disponibilidades e horários livres dos conselheiros.
-- [ ] **Módulo `mentorings`**: Solicitação, aceite e recusa de mentorias.
-- [ ] **Seed de Dados**: Migração `V3__seed_initial_data.sql` com conselheiros e dados de teste para consumo do Frontend e Mobile.
->>>>>>> 8a1ff9aa659237b0e9315df6cdb8bf6072c439dc

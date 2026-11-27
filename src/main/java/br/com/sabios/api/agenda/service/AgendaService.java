@@ -132,11 +132,23 @@ public class AgendaService {
         );
 
         List<OffsetDateTime> slots = new ArrayList<>();
+        boolean hasAnyAvailability = !availabilityRepository.findBySpecialistIdOrderByStartTimeAsc(specialistId).isEmpty();
         for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
-            List<Availability> windows = availabilityRepository.findBySpecialistIdAndDayOfWeek(specialistId, day.getDayOfWeek())
+            List<Availability> windows = hasAnyAvailability
+                    ? availabilityRepository.findBySpecialistIdAndDayOfWeek(specialistId, day.getDayOfWeek())
                     .stream()
                     .sorted(Comparator.comparing(Availability::getStartTime))
-                    .toList();
+                    .toList()
+                    : switch (day.getDayOfWeek()) {
+                case MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY -> List.of(
+                        Availability.builder()
+                                .dayOfWeek(day.getDayOfWeek())
+                                .startTime(LocalTime.of(8, 0))
+                                .endTime(LocalTime.of(18, 0))
+                                .build()
+                );
+                default -> List.of();
+            };
 
             for (Availability window : windows) {
                 LocalTime start = window.getStartTime();

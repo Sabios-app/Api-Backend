@@ -55,11 +55,25 @@ public class SchedulingPolicy {
             return false;
         }
 
-        for (Availability window : availabilityRepository.findBySpecialistIdAndDayOfWeek(specialistId, local.getDayOfWeek())) {
-            if (!sessionStart.isBefore(window.getStartTime()) && !sessionEnd.isAfter(window.getEndTime())) {
-                return true;
+        var dayWindows = availabilityRepository.findBySpecialistIdAndDayOfWeek(specialistId, local.getDayOfWeek());
+        if (!dayWindows.isEmpty()) {
+            for (Availability window : dayWindows) {
+                if (!sessionStart.isBefore(window.getStartTime()) && !sessionEnd.isAfter(window.getEndTime())) {
+                    return true;
+                }
             }
+            return false;
         }
+
+        // Fallback apenas para especialistas que ainda não configuraram nenhuma grade de agenda
+        if (!availabilityRepository.existsBySpecialistId(specialistId)) {
+            return switch (local.getDayOfWeek()) {
+                case MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY ->
+                        !sessionStart.isBefore(LocalTime.of(8, 0)) && !sessionEnd.isAfter(LocalTime.of(18, 0));
+                default -> false;
+            };
+        }
+
         return false;
     }
 }

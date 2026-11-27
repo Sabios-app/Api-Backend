@@ -1,29 +1,41 @@
 package br.com.sabios.api.notifications.service;
 
+import br.com.sabios.api.notification.dto.SendPushNotificationRequest;
+import br.com.sabios.api.notification.service.PushNotificationService;
 import br.com.sabios.api.notifications.domain.Notification;
 import br.com.sabios.api.notifications.domain.NotificationType;
 import br.com.sabios.api.notifications.dto.NotificationResponse;
 import br.com.sabios.api.notifications.repository.NotificationRepository;
 import br.com.sabios.api.users.domain.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
 public class NotificationService {
 
-    private final NotificationRepository notificationRepository;
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
-    public NotificationService(NotificationRepository notificationRepository) {
+    private final NotificationRepository notificationRepository;
+    private final PushNotificationService pushNotificationService;
+
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            PushNotificationService pushNotificationService
+    ) {
         this.notificationRepository = notificationRepository;
+        this.pushNotificationService = pushNotificationService;
     }
 
-    /** Cria uma notificação na mesma transação do fato que a originou. */
+    /** Cria uma notificação na mesma transação do fato que a originou e dispara push FCM. */
     @Transactional
     public void notify(User recipient, NotificationType type, String title, String message, UUID mentoringId) {
         notificationRepository.save(Notification.builder()
@@ -33,6 +45,20 @@ public class NotificationService {
                 .message(message)
                 .mentoringId(mentoringId)
                 .build());
+
+        try {
+            pushNotificationService.sendToUser(new SendPushNotificationRequest(
+                    recipient.getId(),
+                    title,
+                    message,
+                    Map.of(
+                            "type", type != null ? type.name() : "",
+                            "mentoringId", mentoringId != null ? mentoringId.toString() : ""
+                    )
+            ));
+        } catch (Exception ex) {
+            log.warn("Falha ao enviar push FCM para usuário {}: {}", recipient.getId(), ex.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)
@@ -50,7 +76,6 @@ public class NotificationService {
 
     @Transactional
     public NotificationResponse markAsRead(User user, UUID id) {
-        // Notificação de outro usuário é tratada como inexistente, sem revelar que ela existe.
         Notification notification = notificationRepository.findByIdAndUserId(id, user.getId())
                 .orElseThrow(() -> new NoSuchElementException("Notificação não encontrada."));
         if (notification.getReadAt() == null) {
